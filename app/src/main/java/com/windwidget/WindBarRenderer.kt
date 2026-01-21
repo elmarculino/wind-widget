@@ -161,7 +161,8 @@ class WindBarRenderer(private val context: Context) {
 
         canvas.save()
         canvas.translate(cx, cy)
-        canvas.rotate(direction + 180)
+        // Arrow points where wind GOES TO (no +180)
+        canvas.rotate(direction)
 
         val halfSize = size / 2
         val path = Path().apply {

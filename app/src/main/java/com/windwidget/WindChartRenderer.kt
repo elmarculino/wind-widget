@@ -11,7 +11,6 @@ import kotlin.math.roundToInt
 class WindChartRenderer(private val context: Context) {
 
     companion object {
-        // Colors
         private const val COLOR_BG_TOP = 0xFF1A1D21.toInt()
         private const val COLOR_BG_BOTTOM = 0xFF0D0F12.toInt()
         private const val COLOR_CHART_LINE = 0xFF4ADE80.toInt()
@@ -25,24 +24,23 @@ class WindChartRenderer(private val context: Context) {
         private const val COLOR_SPEED_LABEL = 0xFF4ADE80.toInt()
         private const val COLOR_DIRECTION_BAR = 0xFF3B82F6.toInt()
         private const val COLOR_MAX_BAR = 0xFFFBBF24.toInt()
+
+        private const val MAX_LOCATION_LENGTH = 35
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // Scale factor based on height (base height = 180 units)
         val scale = height / 180f
 
-        // Draw background gradient
         drawBackground(canvas, width, height)
 
-        // Calculate chart area with scaled padding
-        val paddingLeft = 45f * scale
-        val paddingRight = 25f * scale
-        val paddingTop = 45f * scale
-        val paddingBottom = 70f * scale
-        val bottomBarHeight = 40f * scale
+        val paddingLeft = 35f * scale
+        val paddingRight = 15f * scale
+        val paddingTop = 40f * scale
+        val paddingBottom = 55f * scale
+        val bottomBarHeight = 38f * scale
 
         val chartLeft = paddingLeft
         val chartRight = width - paddingRight
@@ -58,7 +56,6 @@ class WindChartRenderer(private val context: Context) {
         drawChartArea(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, maxY, scale)
         drawGustOverlay(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, maxY, scale)
         drawDirectionArrows(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, scale)
-        drawSpeedLabels(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, maxY, scale)
         drawTimeAxis(canvas, data, chartLeft, chartBottom, chartWidth, scale)
         drawBottomBar(canvas, data, width, height, bottomBarHeight, scale)
 
@@ -71,36 +68,24 @@ class WindChartRenderer(private val context: Context) {
             COLOR_BG_TOP, COLOR_BG_BOTTOM,
             Shader.TileMode.CLAMP
         )
-        val paint = Paint().apply { shader = gradient }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), Paint().apply { shader = gradient })
     }
 
     private fun drawHeader(canvas: Canvas, data: WindData, width: Int, scale: Float) {
         val paint = TextPaint().apply {
             color = COLOR_TEXT_PRIMARY
-            textSize = 16f * scale
+            textSize = 14f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        canvas.drawText(data.locationName, 14f * scale, 28f * scale, paint)
 
-        val datePaint = TextPaint().apply {
-            color = COLOR_TEXT_SECONDARY
-            textSize = 14f * scale
-            textAlign = Paint.Align.RIGHT
-            isAntiAlias = true
+        // Truncate location name
+        val locationName = if (data.locationName.length > MAX_LOCATION_LENGTH) {
+            data.locationName.take(MAX_LOCATION_LENGTH - 3) + "..."
+        } else {
+            data.locationName
         }
-        val dateStr = formatDate(data.times.firstOrNull() ?: "")
-        canvas.drawText(dateStr, width - 14f * scale, 28f * scale, datePaint)
-    }
-
-    private fun formatDate(isoTime: String): String {
-        return try {
-            val parts = isoTime.split("T")[0].split("-")
-            val day = parts[2].toInt()
-            val month = parts[1].toInt()
-            "$day.$month."
-        } catch (e: Exception) { "" }
+        canvas.drawText(locationName, 12f * scale, 26f * scale, paint)
     }
 
     private fun calculateMaxY(data: WindData): Float {
@@ -109,26 +94,32 @@ class WindChartRenderer(private val context: Context) {
     }
 
     private fun drawGrid(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, maxY: Float, scale: Float) {
-        val gridPaint = Paint().apply { color = COLOR_GRID; strokeWidth = 1f * scale; style = Paint.Style.STROKE }
-        val labelPaint = TextPaint().apply { color = COLOR_TEXT_SECONDARY; textSize = 12f * scale; isAntiAlias = true }
+        val gridPaint = Paint().apply {
+            color = COLOR_GRID
+            strokeWidth = 1f
+            style = Paint.Style.STROKE
+        }
 
         val chartHeight = bottom - top
-        val steps = 5
+        // Only 3 grid lines to avoid overlap
+        val steps = 3
+
         for (i in 0..steps) {
             val y = bottom - (chartHeight * i / steps)
-            val value = (maxY * i / steps).toInt()
             canvas.drawLine(left, y, right, y, gridPaint)
-            val beaufort = WindData.knotsToBeaufort(value.toFloat())
-            canvas.drawText("$beaufort", 10f * scale, y + 5f * scale, labelPaint)
         }
 
+        // Right side: knots labels only (no Beaufort to avoid clutter)
         val knotsPaint = TextPaint().apply {
-            color = COLOR_SPEED_LABEL; textSize = 11f * scale; textAlign = Paint.Align.RIGHT; isAntiAlias = true
+            color = COLOR_SPEED_LABEL
+            textSize = 10f * scale
+            textAlign = Paint.Align.LEFT
+            isAntiAlias = true
         }
         for (i in 0..steps) {
             val y = bottom - (chartHeight * i / steps)
             val value = (maxY * i / steps).toInt()
-            canvas.drawText("$value", right + 22f * scale, y + 4f * scale, knotsPaint)
+            canvas.drawText("$value", right + 4f * scale, y + 4f * scale, knotsPaint)
         }
     }
 
@@ -163,14 +154,16 @@ class WindChartRenderer(private val context: Context) {
         }
 
         val fillGradient = LinearGradient(0f, top, 0f, top + chartHeight, COLOR_CHART_FILL_TOP, COLOR_CHART_FILL_BOTTOM, Shader.TileMode.CLAMP)
-        val fillPaint = Paint().apply { shader = fillGradient; style = Paint.Style.FILL; isAntiAlias = true }
-        canvas.drawPath(fillPath, fillPaint)
+        canvas.drawPath(fillPath, Paint().apply { shader = fillGradient; style = Paint.Style.FILL; isAntiAlias = true })
 
-        val linePaint = Paint().apply {
-            color = COLOR_CHART_LINE; strokeWidth = 3f * scale; style = Paint.Style.STROKE
-            isAntiAlias = true; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-        }
-        canvas.drawPath(path, linePaint)
+        canvas.drawPath(path, Paint().apply {
+            color = COLOR_CHART_LINE
+            strokeWidth = 2.5f * scale
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        })
     }
 
     private fun drawGustOverlay(canvas: Canvas, data: WindData, left: Float, top: Float, chartWidth: Float, chartHeight: Float, maxY: Float, scale: Float) {
@@ -179,11 +172,11 @@ class WindChartRenderer(private val context: Context) {
 
         data.gusts.forEachIndexed { i, gust ->
             val speed = data.speeds.getOrElse(i) { 0f }
-            if (gust > speed) {
+            if (gust > speed * 1.1f) {
                 val x = left + (chartWidth * i / (data.gusts.size - 1).coerceAtLeast(1))
                 val gustY = top + chartHeight * (1 - gust / maxY)
                 val speedY = top + chartHeight * (1 - speed / maxY)
-                val barWidth = 5f * scale
+                val barWidth = 4f * scale
                 canvas.drawRect(x - barWidth / 2, gustY, x + barWidth / 2, speedY, paint)
             }
         }
@@ -191,13 +184,17 @@ class WindChartRenderer(private val context: Context) {
 
     private fun drawDirectionArrows(canvas: Canvas, data: WindData, left: Float, top: Float, chartWidth: Float, chartHeight: Float, scale: Float) {
         val arrowPaint = Paint().apply {
-            color = COLOR_ARROW; strokeWidth = 2f * scale; style = Paint.Style.STROKE
-            isAntiAlias = true; strokeCap = Paint.Cap.ROUND
+            color = COLOR_ARROW
+            strokeWidth = 1.5f * scale
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
         }
 
-        val arrowSize = 14f * scale
-        val arrowY = top + chartHeight * 0.7f
-        val step = maxOf(1, data.directions.size / 6)
+        val arrowSize = 12f * scale
+        val arrowY = top + chartHeight * 0.65f
+        // Show fewer arrows to avoid clutter
+        val step = maxOf(1, data.directions.size / 5)
 
         for (i in data.directions.indices step step) {
             val x = left + (chartWidth * i / (data.directions.size - 1).coerceAtLeast(1))
@@ -205,7 +202,8 @@ class WindChartRenderer(private val context: Context) {
 
             canvas.save()
             canvas.translate(x, arrowY)
-            canvas.rotate(direction + 180)
+            // Arrow points where wind is GOING TO (no +180)
+            canvas.rotate(direction)
 
             val path = Path().apply {
                 moveTo(0f, -arrowSize / 2)
@@ -219,32 +217,25 @@ class WindChartRenderer(private val context: Context) {
         }
     }
 
-    private fun drawSpeedLabels(canvas: Canvas, data: WindData, left: Float, top: Float, chartWidth: Float, chartHeight: Float, maxY: Float, scale: Float) {
-        val labelPaint = TextPaint().apply {
-            color = COLOR_TEXT_SECONDARY; textSize = 11f * scale; textAlign = Paint.Align.CENTER; isAntiAlias = true
-        }
-
-        val step = maxOf(1, data.speeds.size / 8)
-        for (i in data.speeds.indices step step) {
-            val x = left + (chartWidth * i / (data.speeds.size - 1).coerceAtLeast(1))
-            val y = top + chartHeight * (1 - data.speeds[i] / maxY)
-            canvas.drawText("${data.speeds[i].roundToInt()}", x, y - 8f * scale, labelPaint)
-        }
-    }
-
     private fun drawTimeAxis(canvas: Canvas, data: WindData, left: Float, bottom: Float, chartWidth: Float, scale: Float) {
         val timePaint = TextPaint().apply {
-            color = COLOR_TEXT_SECONDARY; textSize = 12f * scale; textAlign = Paint.Align.CENTER; isAntiAlias = true
+            color = COLOR_TEXT_SECONDARY
+            textSize = 10f * scale
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
         }
 
-        val labelCount = minOf(6, data.times.size)
-        val step = maxOf(1, (data.times.size - 1) / (labelCount - 1))
+        // Show only 5 time labels
+        val labelCount = minOf(5, data.times.size)
+        if (labelCount < 2) return
+
+        val step = (data.times.size - 1) / (labelCount - 1)
 
         for (i in 0 until labelCount) {
             val idx = minOf(i * step, data.times.size - 1)
             val x = left + (chartWidth * idx / (data.times.size - 1).coerceAtLeast(1))
             val timeStr = formatTime(data.times.getOrElse(idx) { "" })
-            canvas.drawText(timeStr, x, bottom + 18f * scale, timePaint)
+            canvas.drawText(timeStr, x, bottom + 14f * scale, timePaint)
         }
     }
 
@@ -258,42 +249,42 @@ class WindChartRenderer(private val context: Context) {
         val barTop = height - barHeight
         val sectionWidth = width / 3f
 
-        // Direction (blue)
         canvas.drawRect(0f, barTop, sectionWidth, height.toFloat(), Paint().apply { color = COLOR_DIRECTION_BAR })
-        // Speed (green)
         canvas.drawRect(sectionWidth, barTop, sectionWidth * 2, height.toFloat(), Paint().apply { color = COLOR_CHART_LINE })
-        // Max (amber)
         canvas.drawRect(sectionWidth * 2, barTop, width.toFloat(), height.toFloat(), Paint().apply { color = COLOR_MAX_BAR })
 
         val textPaint = TextPaint().apply {
-            color = COLOR_BG_TOP; textSize = 14f * scale
+            color = COLOR_BG_TOP
+            textSize = 13f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER; isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
         }
 
         val textY = barTop + barHeight / 2 + 5f * scale
 
-        // Direction with arrow
-        drawMiniArrow(canvas, sectionWidth / 2 - 35f * scale, barTop + barHeight / 2, data.currentDirection, scale)
-        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}", sectionWidth / 2 + 5f * scale, textY, textPaint)
+        // Arrow points where wind GOES TO
+        drawMiniArrow(canvas, sectionWidth / 2 - 30f * scale, barTop + barHeight / 2, data.currentDirection, scale)
+        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}", sectionWidth / 2 + 8f * scale, textY, textPaint)
 
-        // Current speed
         canvas.drawText("%.1f kts".format(data.currentSpeed), sectionWidth * 1.5f, textY, textPaint)
-
-        // Max gust
         canvas.drawText("max: ${data.maxGust.roundToInt()}", sectionWidth * 2.5f, textY, textPaint)
     }
 
     private fun drawMiniArrow(canvas: Canvas, x: Float, y: Float, direction: Float, scale: Float) {
         val paint = Paint().apply {
-            color = COLOR_BG_TOP; strokeWidth = 2.5f * scale; style = Paint.Style.STROKE
-            isAntiAlias = true; strokeCap = Paint.Cap.ROUND
+            color = COLOR_BG_TOP
+            strokeWidth = 2f * scale
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
         }
 
         val size = 10f * scale
         canvas.save()
         canvas.translate(x, y)
-        canvas.rotate(direction + 180)
+        // Arrow points where wind GOES TO (direction without +180)
+        canvas.rotate(direction)
 
         val path = Path().apply {
             moveTo(0f, -size / 2)
