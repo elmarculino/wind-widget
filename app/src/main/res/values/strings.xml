@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wind Widget</string>
+    <string name="widget_name">Wind Chart</string>
+    <string name="widget_description">Real-time wind forecast chart showing speed, direction, and gusts</string>
+    <string name="wind_chart_description">Wind forecast chart</string>
+    <string name="error_icon_description">Error icon</string>
+    <string name="error_loading">Unable to load wind data</string>
+    <string name="tap_to_retry">Tap to retry</string>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.WindWidget" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#4ADE80</item>
+        <item name="colorPrimaryVariant">#22C55E</item>
+        <item name="colorOnPrimary">#0D0F12</item>
+        <item name="colorSecondary">#3B82F6</item>
+        <item name="colorSecondaryVariant">#2563EB</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="android:statusBarColor">#0D0F12</item>
+        <item name="android:navigationBarColor">#0D0F12</item>
+        <item name="android:windowBackground">#0D0F12</item>
+    </style>
+
+    <style name="Theme.WindWidget.Configure" parent="Theme.WindWidget">
+        <item name="android:windowIsTranslucent">false</item>
+    </style>
+
+</resources>

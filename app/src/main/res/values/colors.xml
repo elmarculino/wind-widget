@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary palette -->
+    <color name="bg_dark_top">#1A1D21</color>
+    <color name="bg_dark_bottom">#0D0F12</color>
+
+    <!-- Chart colors -->
+    <color name="chart_green">#4ADE80</color>
+    <color name="chart_green_fill">#804ADE80</color>
+    <color name="chart_cyan">#22D3EE</color>
+    <color name="chart_amber">#FBBF24</color>
+    <color name="chart_blue">#3B82F6</color>
+
+    <!-- Text colors -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+
+    <!-- Status colors -->
+    <color name="error_red">#FF6B6B</color>
+</resources>
