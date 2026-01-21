@@ -52,23 +52,24 @@ class WindBarRenderer(private val context: Context) {
         canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, bgPaint)
 
         // Layout measurements (scaled)
-        val paddingH = 16f * scale
-        val paddingV = 10f * scale
-        val barHeight = 28f * scale
-        val barTop = height - paddingV - barHeight - 18f * scale
+        val paddingH = 20f * scale
+        val paddingV = 8f * scale
+        val barHeight = 16f * scale
+        val barPaddingH = 28f * scale  // Extra padding for bar so time labels don't reach edges
+        val barTop = height - paddingV - barHeight - 14f * scale
         val barBottom = barTop + barHeight
 
         // Draw location and time (top row)
         drawHeader(canvas, data, width, paddingH, paddingV, scale)
 
-        // Draw current wind info (middle section)
-        drawCurrentWind(canvas, data, paddingH, paddingV + 22f * scale, barTop - 6f * scale, scale)
+        // Draw current wind info (middle section) - more gap before bar
+        drawCurrentWind(canvas, data, paddingH, paddingV + 18f * scale, barTop - 10f * scale, scale)
 
-        // Draw wind bar
-        drawWindBar(canvas, data, paddingH, barTop, width - paddingH, barBottom, scale)
+        // Draw wind bar (with extra horizontal padding)
+        drawWindBar(canvas, data, barPaddingH, barTop, width - barPaddingH, barBottom, scale)
 
         // Draw time labels
-        drawTimeLabels(canvas, data, paddingH, width - paddingH, barBottom + 4f * scale, scale)
+        drawTimeLabels(canvas, data, barPaddingH, width - barPaddingH, barBottom + 2f * scale, scale)
 
         return bitmap
     }
@@ -77,83 +78,83 @@ class WindBarRenderer(private val context: Context) {
         // Location name (left)
         val locationPaint = TextPaint().apply {
             color = COLOR_TEXT_PRIMARY
-            textSize = 14f * scale
+            textSize = 12f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
 
-        val maxLocationWidth = width * 0.65f
+        val maxLocationWidth = width * 0.6f
         val locationText = ellipsize(data.locationName, locationPaint, maxLocationWidth)
-        canvas.drawText(locationText, paddingH, paddingV + 16f * scale, locationPaint)
+        canvas.drawText(locationText, paddingH, paddingV + 14f * scale, locationPaint)
 
         // Current time (right)
         val timePaint = TextPaint().apply {
             color = COLOR_TEXT_SECONDARY
-            textSize = 13f * scale
+            textSize = 11f * scale
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
         val timeStr = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date())
-        canvas.drawText(timeStr, width - paddingH, paddingV + 16f * scale, timePaint)
+        canvas.drawText(timeStr, width - paddingH, paddingV + 14f * scale, timePaint)
     }
 
     private fun drawCurrentWind(canvas: Canvas, data: WindData, left: Float, top: Float, bottom: Float, scale: Float) {
         val centerY = (top + bottom) / 2
 
         // Draw direction arrow
-        val arrowSize = 20f * scale
-        val arrowX = left + arrowSize / 2 + 4f * scale
+        val arrowSize = 16f * scale
+        val arrowX = left + arrowSize / 2
         drawWindArrow(canvas, arrowX, centerY, data.currentDirection, arrowSize, scale)
 
         // Direction text (e.g., "ENE")
         val dirPaint = TextPaint().apply {
             color = COLOR_TEXT_PRIMARY
-            textSize = 16f * scale
+            textSize = 14f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        val dirX = arrowX + arrowSize / 2 + 10f * scale
-        canvas.drawText(data.directionCardinal, dirX, centerY + 6f * scale, dirPaint)
+        val dirX = arrowX + arrowSize / 2 + 8f * scale
+        canvas.drawText(data.directionCardinal, dirX, centerY + 5f * scale, dirPaint)
 
         // Wind speed (large)
         val speedPaint = TextPaint().apply {
             color = getColorForSpeed(data.currentSpeed)
-            textSize = 24f * scale
+            textSize = 20f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
         val speedText = "%.1f".format(data.currentSpeed)
-        val speedX = dirX + dirPaint.measureText(data.directionCardinal) + 16f * scale
-        canvas.drawText(speedText, speedX, centerY + 8f * scale, speedPaint)
+        val speedX = dirX + dirPaint.measureText(data.directionCardinal) + 12f * scale
+        canvas.drawText(speedText, speedX, centerY + 6f * scale, speedPaint)
 
         // Unit
         val unitPaint = TextPaint().apply {
             color = COLOR_TEXT_SECONDARY
-            textSize = 14f * scale
+            textSize = 12f * scale
             isAntiAlias = true
         }
-        val unitX = speedX + speedPaint.measureText(speedText) + 6f * scale
-        canvas.drawText("kts", unitX, centerY + 6f * scale, unitPaint)
+        val unitX = speedX + speedPaint.measureText(speedText) + 4f * scale
+        canvas.drawText("kts", unitX, centerY + 5f * scale, unitPaint)
 
         // Gust info (if significant)
         if (data.currentGust > data.currentSpeed * 1.15f) {
             val gustPaint = TextPaint().apply {
                 color = 0xFFFF6B6B.toInt()
-                textSize = 14f * scale
+                textSize = 12f * scale
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
             }
             val gustText = "G${data.currentGust.roundToInt()}"
-            val gustX = unitX + unitPaint.measureText("kts") + 12f * scale
-            canvas.drawText(gustText, gustX, centerY + 6f * scale, gustPaint)
+            val gustX = unitX + unitPaint.measureText("kts") + 10f * scale
+            canvas.drawText(gustText, gustX, centerY + 5f * scale, gustPaint)
         }
     }
 
     private fun drawWindArrow(canvas: Canvas, cx: Float, cy: Float, direction: Float, size: Float, scale: Float) {
         val paint = Paint().apply {
             color = COLOR_ARROW
-            strokeWidth = 2.5f * scale
+            strokeWidth = 2f * scale
             style = Paint.Style.STROKE
             isAntiAlias = true
             strokeCap = Paint.Cap.ROUND
@@ -181,7 +182,7 @@ class WindBarRenderer(private val context: Context) {
 
         val barWidth = right - left
         val segmentWidth = barWidth / data.speeds.size
-        val cornerRadius = 8f * scale
+        val cornerRadius = 6f * scale
 
         // Create clipping path for rounded corners
         val clipPath = Path().apply {
@@ -224,20 +225,22 @@ class WindBarRenderer(private val context: Context) {
 
         val timePaint = TextPaint().apply {
             color = COLOR_TEXT_SECONDARY
-            textSize = 11f * scale
+            textSize = 9f * scale
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
 
         val barWidth = right - left
-        val labelCount = minOf(6, data.times.size)
-        val step = maxOf(1, (data.times.size - 1) / (labelCount - 1))
+        val labelCount = minOf(5, data.times.size)
+        if (labelCount < 2) return
+
+        val step = (data.times.size - 1) / (labelCount - 1)
 
         for (i in 0 until labelCount) {
             val idx = minOf(i * step, data.times.size - 1)
             val x = left + (barWidth * idx / (data.times.size - 1).coerceAtLeast(1))
             val timeStr = formatTime(data.times.getOrElse(idx) { "" })
-            canvas.drawText(timeStr, x, top + 12f * scale, timePaint)
+            canvas.drawText(timeStr, x, top + 10f * scale, timePaint)
         }
     }
 
