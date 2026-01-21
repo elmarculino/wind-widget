@@ -39,7 +39,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Wind Widget Provider -->
+        <!-- Wind Widget Provider (4x2 Chart) -->
         <receiver
             android:name=".WindWidget"
             android:exported="true"
@@ -50,6 +50,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/wind_widget_info" />
+        </receiver>
+
+        <!-- Wind Widget Horizontal Provider (4x1 Bar) -->
+        <receiver
+            android:name=".WindWidgetHorizontal"
+            android:exported="true"
+            android:label="@string/widget_name_horizontal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wind_widget_horizontal_info" />
         </receiver>
 
         <!-- Boot receiver to restart updates after reboot -->

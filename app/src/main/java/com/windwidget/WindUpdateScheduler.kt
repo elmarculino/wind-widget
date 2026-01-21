@@ -70,7 +70,9 @@ class WindUpdateWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            // Update both widget types
             WindWidget.updateAllWidgets(applicationContext)
+            WindWidgetHorizontal.updateAllWidgets(applicationContext)
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <solid android:color="#E6101316" />
+        </shape>
+    </item>
+
+    <!-- Wind bar simulation -->
+    <item
+        android:top="45dp"
+        android:bottom="15dp"
+        android:left="12dp"
+        android:right="12dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="6dp" />
+            <gradient
+                android:type="linear"
+                android:angle="0"
+                android:startColor="#4ADE80"
+                android:centerColor="#FDE047"
+                android:endColor="#F97316" />
+        </shape>
+    </item>
+</layer-list>
