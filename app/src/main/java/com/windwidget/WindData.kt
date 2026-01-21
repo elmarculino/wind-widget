@@ -17,6 +17,7 @@ data class WindData(
     val currentDirection: Float = directions.lastOrNull() ?: 0f,
     val currentGust: Float = gusts.lastOrNull() ?: 0f
 ) {
+    val maxSpeed: Float get() = speeds.maxOrNull() ?: 0f
     val maxGust: Float get() = gusts.maxOrNull() ?: 0f
 
     val directionCardinal: String get() {

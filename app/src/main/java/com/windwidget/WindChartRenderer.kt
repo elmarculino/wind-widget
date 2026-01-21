@@ -36,11 +36,11 @@ class WindChartRenderer(private val context: Context) {
 
         drawBackground(canvas, width, height)
 
-        val paddingLeft = 35f * scale
-        val paddingRight = 15f * scale
-        val paddingTop = 40f * scale
-        val paddingBottom = 55f * scale
-        val bottomBarHeight = 38f * scale
+        val paddingLeft = 12f * scale
+        val paddingRight = 28f * scale
+        val paddingTop = 36f * scale
+        val paddingBottom = 38f * scale
+        val bottomBarHeight = 32f * scale
 
         val chartLeft = paddingLeft
         val chartRight = width - paddingRight
@@ -85,7 +85,7 @@ class WindChartRenderer(private val context: Context) {
         } else {
             data.locationName
         }
-        canvas.drawText(locationName, 12f * scale, 26f * scale, paint)
+        canvas.drawText(locationName, 10f * scale, 24f * scale, paint)
     }
 
     private fun calculateMaxY(data: WindData): Float {
@@ -255,20 +255,39 @@ class WindChartRenderer(private val context: Context) {
 
         val textPaint = TextPaint().apply {
             color = COLOR_BG_TOP
-            textSize = 13f * scale
+            textSize = 12f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
 
-        val textY = barTop + barHeight / 2 + 5f * scale
+        val smallTextPaint = TextPaint().apply {
+            color = COLOR_BG_TOP
+            textSize = 9f * scale
+            textAlign = Paint.Align.LEFT
+            isAntiAlias = true
+        }
 
-        // Arrow points where wind GOES TO
-        drawMiniArrow(canvas, sectionWidth / 2 - 30f * scale, barTop + barHeight / 2, data.currentDirection, scale)
-        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}", sectionWidth / 2 + 8f * scale, textY, textPaint)
+        val textY = barTop + barHeight / 2 + 4f * scale
+        val smallTextY = barTop + barHeight / 2 + 3f * scale
 
-        canvas.drawText("%.1f kts".format(data.currentSpeed), sectionWidth * 1.5f, textY, textPaint)
-        canvas.drawText("max: ${data.maxGust.roundToInt()}", sectionWidth * 2.5f, textY, textPaint)
+        // Blue box: Direction with arrow
+        drawMiniArrow(canvas, sectionWidth / 2 - 26f * scale, barTop + barHeight / 2, data.currentDirection, scale)
+        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}°", sectionWidth / 2 + 6f * scale, textY, textPaint)
+
+        // Green box: Wind speed + max
+        val speedText = "%.1f".format(data.currentSpeed)
+        val speedWidth = textPaint.measureText(speedText)
+        val speedX = sectionWidth * 1.5f - speedWidth / 2 - 8f * scale
+        canvas.drawText(speedText, speedX + speedWidth / 2, textY, textPaint)
+        canvas.drawText("max ${data.maxSpeed.roundToInt()}", speedX + speedWidth + 4f * scale, smallTextY, smallTextPaint)
+
+        // Yellow box: Gust + max gust
+        val gustText = "G %.1f".format(data.currentGust)
+        val gustWidth = textPaint.measureText(gustText)
+        val gustX = sectionWidth * 2.5f - gustWidth / 2 - 8f * scale
+        canvas.drawText(gustText, gustX + gustWidth / 2, textY, textPaint)
+        canvas.drawText("max ${data.maxGust.roundToInt()}", gustX + gustWidth + 4f * scale, smallTextY, smallTextPaint)
     }
 
     private fun drawMiniArrow(canvas: Canvas, x: Float, y: Float, direction: Float, scale: Float) {
