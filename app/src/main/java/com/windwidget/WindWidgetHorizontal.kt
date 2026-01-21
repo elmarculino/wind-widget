@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
@@ -27,9 +28,9 @@ class WindWidgetHorizontal : AppWidgetProvider() {
     companion object {
         private const val ACTION_REFRESH = "com.windwidget.ACTION_REFRESH_HORIZONTAL"
 
-        // Widget dimensions in dp (4x1 widget)
-        private const val WIDGET_WIDTH_DP = 320
-        private const val WIDGET_HEIGHT_DP = 80
+        // Fallback dimensions in dp (if we can't get actual size)
+        private const val DEFAULT_WIDTH_DP = 360
+        private const val DEFAULT_HEIGHT_DP = 100
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -71,10 +72,9 @@ class WindWidgetHorizontal : AppWidgetProvider() {
                 val fetcher = EcowittDataFetcher(context)
                 val windData = fetcher.fetch() ?: fetcher.generateDemoData()
 
-                // Calculate widget size in pixels
-                val density = context.resources.displayMetrics.density
-                val widthPx = (WIDGET_WIDTH_DP * density).toInt()
-                val heightPx = (WIDGET_HEIGHT_DP * density).toInt()
+                // Get actual widget size
+                val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+                val (widthPx, heightPx) = getWidgetSizeInPixels(context, options)
 
                 // Render wind bar bitmap
                 val renderer = WindBarRenderer(context)
@@ -91,7 +91,7 @@ class WindWidgetHorizontal : AppWidgetProvider() {
                 }
                 val pendingIntent = PendingIntent.getBroadcast(
                     context,
-                    appWidgetId + 1000,  // Offset to avoid collision with main widget
+                    appWidgetId + 1000,
                     refreshIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
@@ -104,6 +104,30 @@ class WindWidgetHorizontal : AppWidgetProvider() {
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
+
+        /**
+         * Get widget size in pixels from AppWidgetManager options
+         */
+        private fun getWidgetSizeInPixels(context: Context, options: Bundle): Pair<Int, Int> {
+            val density = context.resources.displayMetrics.density
+
+            // Get width - use max width for landscape, min for portrait
+            val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, DEFAULT_WIDTH_DP)
+            val maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidthDp)
+            val widthDp = maxOf(minWidthDp, maxWidthDp, DEFAULT_WIDTH_DP)
+
+            // Get height
+            val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, DEFAULT_HEIGHT_DP)
+            val maxHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeightDp)
+            val heightDp = maxOf(minHeightDp, maxHeightDp, DEFAULT_HEIGHT_DP)
+
+            // Convert to pixels with higher resolution for crisp rendering
+            val scaleFactor = 2.0f  // Render at 2x for sharpness
+            val widthPx = (widthDp * density * scaleFactor).toInt()
+            val heightPx = (heightDp * density * scaleFactor).toInt()
+
+            return Pair(widthPx, heightPx)
+        }
     }
 
     override fun onUpdate(
@@ -114,6 +138,16 @@ class WindWidgetHorizontal : AppWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
         }
+    }
+
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        // Re-render when widget is resized
+        updateWidget(context, appWidgetManager, appWidgetId)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
