@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1A1D21"
+        android:pathData="M54,54m-54,0a54,54 0,1 1,108 0a54,54 0,1 1,-108 0" />
+
+    <!-- Wind wave 1 -->
+    <path
+        android:fillColor="#4ADE80"
+        android:pathData="M20,58 Q35,48 54,58 Q73,68 88,58 L88,68 Q73,78 54,68 Q35,58 20,68 Z" />
+
+    <!-- Wind wave 2 -->
+    <path
+        android:fillColor="#4ADE80"
+        android:fillAlpha="0.6"
+        android:pathData="M20,48 Q35,38 54,48 Q73,58 88,48 L88,54 Q73,64 54,54 Q35,44 20,54 Z" />
+
+    <!-- Arrow indicating wind direction -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L62,42 L57,42 L57,52 L51,52 L51,42 L46,42 Z" />
+
+</vector>
