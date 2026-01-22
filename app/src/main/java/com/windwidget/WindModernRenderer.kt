@@ -99,7 +99,7 @@ class WindModernRenderer(private val context: Context) {
         }
         val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date())
-        canvas.drawText("UPDATED $currentTime", paddingH, paddingV + 26f * scale, timePaint)
+        canvas.drawText("ATUALIZADO $currentTime", paddingH, paddingV + 26f * scale, timePaint)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
@@ -168,7 +168,7 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.15f
             isAntiAlias = true
         }
-        canvas.drawText("DIRECTION", circleX - circleRadius - 8f * scale, top + 10f * scale, dirLabelPaint)
+        canvas.drawText("DIREÇÃO", circleX - circleRadius - 8f * scale, top + 10f * scale, dirLabelPaint)
 
         // Direction value
         val dirValuePaint = TextPaint().apply {
@@ -291,23 +291,23 @@ class WindModernRenderer(private val context: Context) {
         }
         val dotRadius = 2.5f * scale
 
-        // Min speed
+        // Max speed (Velocidade máxima)
         var x = paddingH
         dotPaint.color = COLOR_ACCENT_GLOW
         canvas.drawCircle(x + dotRadius, y, dotRadius, dotPaint)
         x += dotRadius * 2 + 4f * scale
-        canvas.drawText("SPD:", x, y + 3f * scale, labelPaint)
-        x += labelPaint.measureText("SPD:") + 2f * scale
-        canvas.drawText("${data.speeds.minOrNull()?.roundToInt() ?: 0} min", x, y + 3f * scale, valuePaint)
+        canvas.drawText("VEL:", x, y + 3f * scale, labelPaint)
+        x += labelPaint.measureText("VEL:") + 2f * scale
+        canvas.drawText("${data.maxSpeed.roundToInt()} max", x, y + 3f * scale, valuePaint)
 
-        // Max gust
-        x += valuePaint.measureText("${data.speeds.minOrNull()?.roundToInt() ?: 0} min") + 16f * scale
+        // Current gust (Rajada atual)
+        x += valuePaint.measureText("${data.maxSpeed.roundToInt()} max") + 16f * scale
         dotPaint.color = COLOR_ACCENT
         canvas.drawCircle(x + dotRadius, y, dotRadius, dotPaint)
         x += dotRadius * 2 + 4f * scale
-        canvas.drawText("GUST:", x, y + 3f * scale, labelPaint)
-        x += labelPaint.measureText("GUST:") + 2f * scale
-        canvas.drawText("${data.maxGust.roundToInt()} max", x, y + 3f * scale, valuePaint)
+        canvas.drawText("RAJADA:", x, y + 3f * scale, labelPaint)
+        x += labelPaint.measureText("RAJADA:") + 2f * scale
+        canvas.drawText("${data.currentGust.roundToInt()}", x, y + 3f * scale, valuePaint)
 
         // Time range (right side)
         val timeRangePaint = TextPaint().apply {
@@ -318,6 +318,6 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.1f
             isAntiAlias = true
         }
-        canvas.drawText("LAST 3H", width - paddingH, y + 3f * scale, timeRangePaint)
+        canvas.drawText("ÚLTIMAS 3H", width - paddingH, y + 3f * scale, timeRangePaint)
     }
 }
