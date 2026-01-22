@@ -78,6 +78,19 @@
                 android:resource="@xml/wind_widget_clean_info" />
         </receiver>
 
+        <!-- Wind Widget Compact Provider (2x2) -->
+        <receiver
+            android:name=".WindWidgetCompact"
+            android:exported="true"
+            android:label="@string/widget_name_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wind_widget_compact_info" />
+        </receiver>
+
         <!-- Boot receiver to restart updates after reboot -->
         <receiver
             android:name=".BootReceiver"

@@ -18,6 +18,7 @@ class BootReceiver : BroadcastReceiver() {
             WindWidget.updateAllWidgets(context)
             WindWidgetHorizontal.updateAllWidgets(context)
             WindWidgetClean.updateAllWidgets(context)
+            WindWidgetCompact.updateAllWidgets(context)
         }
     }
 }

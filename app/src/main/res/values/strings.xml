@@ -4,9 +4,11 @@
     <string name="widget_name">Wind Chart</string>
     <string name="widget_name_horizontal">Wind Bar</string>
     <string name="widget_name_clean">Wind Clean</string>
+    <string name="widget_name_compact">Wind Compact</string>
     <string name="widget_description">Real-time wind forecast chart showing speed, direction, and gusts</string>
     <string name="widget_horizontal_description">Compact wind bar with color-coded speed history</string>
     <string name="widget_clean_description">Clean Material Design style wind widget</string>
+    <string name="widget_compact_description">Compact 2x2 widget showing current wind direction, speed, and gust</string>
     <string name="wind_chart_description">Wind forecast chart</string>
     <string name="error_icon_description">Error icon</string>
     <string name="error_loading">Unable to load wind data</string>
