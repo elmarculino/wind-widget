@@ -14,9 +14,10 @@ class BootReceiver : BroadcastReceiver() {
             // Reschedule periodic updates
             WindUpdateScheduler.scheduleUpdates(context)
 
-            // Trigger immediate update for both widget types
+            // Trigger immediate update for all widget types
             WindWidget.updateAllWidgets(context)
             WindWidgetHorizontal.updateAllWidgets(context)
+            WindWidgetClean.updateAllWidgets(context)
         }
     }
 }
