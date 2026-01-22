@@ -86,6 +86,17 @@ class WindChartRenderer(private val context: Context) {
             data.locationName
         }
         canvas.drawText(locationName, 10f * scale, 24f * scale, paint)
+
+        // Last update time (top right)
+        val timePaint = TextPaint().apply {
+            color = COLOR_TEXT_SECONDARY
+            textSize = 10f * scale
+            textAlign = Paint.Align.RIGHT
+            isAntiAlias = true
+        }
+        val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        canvas.drawText(currentTime, width - 10f * scale, 24f * scale, timePaint)
     }
 
     private fun calculateMaxY(data: WindData): Float {
