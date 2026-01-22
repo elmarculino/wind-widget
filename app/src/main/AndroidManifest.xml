@@ -91,6 +91,19 @@
                 android:resource="@xml/wind_widget_compact_info" />
         </receiver>
 
+        <!-- Wind Widget Modern Provider (4x2 Dark Glass) -->
+        <receiver
+            android:name=".WindWidgetModern"
+            android:exported="true"
+            android:label="@string/widget_name_modern">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wind_widget_modern_info" />
+        </receiver>
+
         <!-- Boot receiver to restart updates after reboot -->
         <receiver
             android:name=".BootReceiver"
