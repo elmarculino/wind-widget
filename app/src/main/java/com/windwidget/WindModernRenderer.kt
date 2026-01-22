@@ -211,9 +211,9 @@ class WindModernRenderer(private val context: Context) {
         val chartWidth = right - left
         val chartHeight = bottom - top
 
-        // Fixed Y axis: 0 to 30 knots
+        // Fixed Y axis: 0 to 20 knots
         val minSpeed = 0f
-        val maxSpeed = 30f
+        val maxSpeed = 20f
         val range = maxSpeed - minSpeed
 
         val linePath = Path()
