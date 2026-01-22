@@ -211,9 +211,10 @@ class WindModernRenderer(private val context: Context) {
         val chartWidth = right - left
         val chartHeight = bottom - top
 
-        val maxSpeed = (data.speeds.maxOrNull() ?: 1f).coerceAtLeast(1f)
-        val minSpeed = (data.speeds.minOrNull() ?: 0f).coerceAtMost(maxSpeed - 0.5f)
-        val range = (maxSpeed - minSpeed).coerceAtLeast(1f)
+        // Fixed Y axis: 0 to 30 knots
+        val minSpeed = 0f
+        val maxSpeed = 30f
+        val range = maxSpeed - minSpeed
 
         val linePath = Path()
         val fillPath = Path()
@@ -222,7 +223,7 @@ class WindModernRenderer(private val context: Context) {
         data.speeds.forEachIndexed { i, speed ->
             val x = left + (chartWidth * i / (data.speeds.size - 1))
             val normalizedSpeed = (speed - minSpeed) / range
-            val y = bottom - (chartHeight * normalizedSpeed * 0.9f)
+            val y = bottom - (chartHeight * normalizedSpeed)
             points.add(PointF(x, y))
         }
 
