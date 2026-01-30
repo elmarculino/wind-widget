@@ -15,7 +15,9 @@ data class WindData(
     // Real-time current values (from real_time endpoint)
     val currentSpeed: Float = speeds.lastOrNull() ?: 0f,
     val currentDirection: Float = directions.lastOrNull() ?: 0f,
-    val currentGust: Float = gusts.lastOrNull() ?: 0f
+    val currentGust: Float = gusts.lastOrNull() ?: 0f,
+    val dataStatus: WindDataStatus = WindDataStatus.LIVE,
+    val lastUpdatedMillis: Long = System.currentTimeMillis()
 ) {
     val maxSpeed: Float get() = speeds.maxOrNull() ?: 0f
     val maxGust: Float get() = gusts.maxOrNull() ?: 0f
@@ -51,4 +53,22 @@ data class WindData(
             else -> 12
         }
     }
+
+    fun statusText(): String {
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date(lastUpdatedMillis))
+        return when (dataStatus) {
+            WindDataStatus.LIVE -> "Updated $time"
+            WindDataStatus.CACHED -> "Cached $time"
+            WindDataStatus.STALE -> "Offline $time"
+            WindDataStatus.DEMO -> "Demo data"
+        }
+    }
+}
+
+enum class WindDataStatus {
+    LIVE,
+    CACHED,
+    STALE,
+    DEMO
 }
