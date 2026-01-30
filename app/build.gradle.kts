@@ -63,4 +63,12 @@ dependencies {
 
     // Startup library for WorkManager
     implementation("androidx.startup:startup-runtime:1.1.1")
+
+    // Encrypted SharedPreferences
+    implementation("androidx.security:security-crypto:1.0.0")
+
+    // Unit tests
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 }

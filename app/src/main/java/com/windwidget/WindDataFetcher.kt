@@ -19,12 +19,16 @@ import java.util.concurrent.TimeUnit
  * - History endpoint: last 3 hours for the chart
  * - Real-time endpoint: current speed/direction for the bottom bar
  */
-class EcowittDataFetcher(private val context: Context) {
+class EcowittDataFetcher(
+    private val context: Context,
+    private val appWidgetId: Int? = null
+) {
 
     companion object {
         private const val PREFS_NAME = "wind_widget_prefs"
         private const val KEY_CACHED_DATA = "cached_wind_data"
         private const val KEY_CACHE_TIME = "cache_time"
+        private const val KEY_MIGRATION_COMPLETED_V1 = "migration_completed_v1"
         private const val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
 
         // Ecowitt API settings keys
@@ -41,16 +45,21 @@ class EcowittDataFetcher(private val context: Context) {
     }
 
     private val client = OkHttpClient.Builder()
+        .addInterceptor(RetryInterceptor())
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val prefs: SharedPreferences by lazy {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        SecurePrefs.get(context, PREFS_NAME)
     }
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("America/Sao_Paulo")
+        timeZone = TimeZone.getDefault()
+    }
+
+    init {
+        migrateLegacyPrefsIfNeeded()
     }
 
     /**
@@ -59,7 +68,7 @@ class EcowittDataFetcher(private val context: Context) {
     suspend fun fetch(forceRefresh: Boolean = false): WindData? {
         // Check cache first
         if (!forceRefresh) {
-            getCachedData()?.let { return it }
+            getCachedData(status = WindDataStatus.CACHED)?.let { return it }
         }
 
         return withContext(Dispatchers.IO) {
@@ -70,16 +79,17 @@ class EcowittDataFetcher(private val context: Context) {
             } catch (e: Exception) {
                 e.printStackTrace()
                 // Return cached data even if stale on error
-                getCachedData(ignoreExpiry = true) ?: generateDemoData()
+                getCachedData(ignoreExpiry = true, status = WindDataStatus.STALE) ?: generateDemoData()
             }
         }
     }
 
     private suspend fun fetchFromEcowitt(): WindData? = withContext(Dispatchers.IO) {
-        val appKey = prefs.getString(KEY_APPLICATION_KEY, null)
-        val apiKey = prefs.getString(KEY_API_KEY, null)
-        val mac = prefs.getString(KEY_MAC_ADDRESS, null)
-        val locationName = prefs.getString(KEY_LOCATION_NAME, DEFAULT_LOCATION) ?: DEFAULT_LOCATION
+        val credentials = getCredentials()
+        val appKey = credentials?.applicationKey
+        val apiKey = credentials?.apiKey
+        val mac = credentials?.macAddress
+        val locationName = credentials?.locationName ?: DEFAULT_LOCATION
 
         if (appKey.isNullOrEmpty() || apiKey.isNullOrEmpty() || mac.isNullOrEmpty()) {
             // No credentials configured, return demo data
@@ -107,7 +117,9 @@ class EcowittDataFetcher(private val context: Context) {
             gusts = historyData.gusts,
             currentSpeed = realtimeData?.speed ?: historyData.speeds.lastOrNull() ?: 0f,
             currentDirection = realtimeData?.direction ?: historyData.directions.lastOrNull() ?: 0f,
-            currentGust = realtimeData?.gust ?: historyData.gusts.lastOrNull() ?: 0f
+            currentGust = realtimeData?.gust ?: historyData.gusts.lastOrNull() ?: 0f,
+            dataStatus = WindDataStatus.LIVE,
+            lastUpdatedMillis = System.currentTimeMillis()
         )
     }
 
@@ -119,9 +131,7 @@ class EcowittDataFetcher(private val context: Context) {
         val startDate = Date(endDate.time - 3 * 60 * 60 * 1000) // 3 hours ago
 
         val url = "https://api.ecowitt.net/api/v3/device/history?" +
-                "application_key=$appKey" +
-                "&api_key=$apiKey" +
-                "&mac=${URLEncoder.encode(mac, "UTF-8")}" +
+                "mac=${URLEncoder.encode(mac, "UTF-8")}" +
                 "&start_date=${URLEncoder.encode(dateFormat.format(startDate), "UTF-8")}" +
                 "&end_date=${URLEncoder.encode(dateFormat.format(endDate), "UTF-8")}" +
                 "&cycle_type=5min" +
@@ -131,6 +141,8 @@ class EcowittDataFetcher(private val context: Context) {
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
+            .header("X-Application-Key", appKey)
+            .header("X-API-Key", apiKey)
             .build()
 
         return try {
@@ -150,15 +162,15 @@ class EcowittDataFetcher(private val context: Context) {
      */
     private fun fetchRealtime(appKey: String, apiKey: String, mac: String): RealtimeResult? {
         val url = "https://api.ecowitt.net/api/v3/device/real_time?" +
-                "application_key=$appKey" +
-                "&api_key=$apiKey" +
-                "&mac=${URLEncoder.encode(mac, "UTF-8")}" +
+                "mac=${URLEncoder.encode(mac, "UTF-8")}" +
                 "&call_back=wind" +
                 "&wind_speed_unitid=$WIND_SPEED_UNIT_KNOTS"
 
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
+            .header("X-Application-Key", appKey)
+            .header("X-API-Key", apiKey)
             .build()
 
         return try {
@@ -173,7 +185,7 @@ class EcowittDataFetcher(private val context: Context) {
         }
     }
 
-    private fun parseHistoryResponse(json: String): HistoryResult? {
+    internal fun parseHistoryResponse(json: String): HistoryResult? {
         return try {
             val response = Gson().fromJson(json, EcowittHistoryResponse::class.java)
 
@@ -217,7 +229,7 @@ class EcowittDataFetcher(private val context: Context) {
         }
     }
 
-    private fun parseRealtimeResponse(json: String): RealtimeResult? {
+    internal fun parseRealtimeResponse(json: String): RealtimeResult? {
         return try {
             val response = Gson().fromJson(json, EcowittRealtimeResponse::class.java)
 
@@ -244,17 +256,21 @@ class EcowittDataFetcher(private val context: Context) {
         return SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US).format(date)
     }
 
-    private fun getCachedData(ignoreExpiry: Boolean = false): WindData? {
-        val cacheTime = prefs.getLong(KEY_CACHE_TIME, 0)
+    private fun getCachedData(
+        ignoreExpiry: Boolean = false,
+        status: WindDataStatus = WindDataStatus.CACHED
+    ): WindData? {
+        val cacheTime = prefs.getLong(widgetKey(KEY_CACHE_TIME), 0)
         val now = System.currentTimeMillis()
 
         if (!ignoreExpiry && now - cacheTime > CACHE_DURATION_MS) {
             return null
         }
 
-        val json = prefs.getString(KEY_CACHED_DATA, null) ?: return null
+        val json = prefs.getString(widgetKey(KEY_CACHED_DATA), null) ?: return null
         return try {
-            Gson().fromJson(json, WindData::class.java)
+            val cached = Gson().fromJson(json, WindData::class.java)
+            cached.copy(dataStatus = status)
         } catch (e: Exception) {
             null
         }
@@ -262,8 +278,8 @@ class EcowittDataFetcher(private val context: Context) {
 
     private fun cacheData(data: WindData) {
         prefs.edit()
-            .putString(KEY_CACHED_DATA, Gson().toJson(data))
-            .putLong(KEY_CACHE_TIME, System.currentTimeMillis())
+            .putString(widgetKey(KEY_CACHED_DATA), Gson().toJson(data.copy(dataStatus = WindDataStatus.LIVE)))
+            .putLong(widgetKey(KEY_CACHE_TIME), System.currentTimeMillis())
             .apply()
     }
 
@@ -272,10 +288,10 @@ class EcowittDataFetcher(private val context: Context) {
      */
     fun saveCredentials(applicationKey: String, apiKey: String, macAddress: String, locationName: String) {
         prefs.edit()
-            .putString(KEY_APPLICATION_KEY, applicationKey)
-            .putString(KEY_API_KEY, apiKey)
-            .putString(KEY_MAC_ADDRESS, macAddress)
-            .putString(KEY_LOCATION_NAME, locationName)
+            .putString(widgetKey(KEY_APPLICATION_KEY), applicationKey)
+            .putString(widgetKey(KEY_API_KEY), apiKey)
+            .putString(widgetKey(KEY_MAC_ADDRESS), macAddress)
+            .putString(widgetKey(KEY_LOCATION_NAME), locationName)
             .apply()
     }
 
@@ -283,9 +299,13 @@ class EcowittDataFetcher(private val context: Context) {
      * Check if credentials are configured
      */
     fun hasCredentials(): Boolean {
-        return !prefs.getString(KEY_APPLICATION_KEY, null).isNullOrEmpty() &&
-                !prefs.getString(KEY_API_KEY, null).isNullOrEmpty() &&
-                !prefs.getString(KEY_MAC_ADDRESS, null).isNullOrEmpty()
+        return !prefs.getString(widgetKey(KEY_APPLICATION_KEY), null).isNullOrEmpty() &&
+                !prefs.getString(widgetKey(KEY_API_KEY), null).isNullOrEmpty() &&
+                !prefs.getString(widgetKey(KEY_MAC_ADDRESS), null).isNullOrEmpty()
+    }
+
+    fun loadCredentials(): Credentials? {
+        return getCredentials()
     }
 
     /**
@@ -331,19 +351,96 @@ class EcowittDataFetcher(private val context: Context) {
             gusts = gusts,
             currentSpeed = currentSpeed,
             currentDirection = currentDirection,
-            currentGust = currentGust
+            currentGust = currentGust,
+            dataStatus = WindDataStatus.DEMO,
+            lastUpdatedMillis = System.currentTimeMillis()
         )
     }
 
+    private fun widgetKey(base: String): String {
+        return if (appWidgetId != null) {
+            "widget_${appWidgetId}_$base"
+        } else {
+            base
+        }
+    }
+
+    private fun getCredentials(): Credentials? {
+        val appKey = prefs.getString(widgetKey(KEY_APPLICATION_KEY), null)
+        val apiKey = prefs.getString(widgetKey(KEY_API_KEY), null)
+        val mac = prefs.getString(widgetKey(KEY_MAC_ADDRESS), null)
+        val locationName = prefs.getString(widgetKey(KEY_LOCATION_NAME), DEFAULT_LOCATION)
+
+        if (appKey.isNullOrEmpty() || apiKey.isNullOrEmpty() || mac.isNullOrEmpty()) {
+            return null
+        }
+
+        return Credentials(
+            applicationKey = appKey,
+            apiKey = apiKey,
+            macAddress = mac,
+            locationName = locationName ?: DEFAULT_LOCATION
+        )
+    }
+
+    data class Credentials(
+        val applicationKey: String,
+        val apiKey: String,
+        val macAddress: String,
+        val locationName: String
+    )
+
+    private fun migrateLegacyPrefsIfNeeded() {
+        if (prefs.getBoolean(KEY_MIGRATION_COMPLETED_V1, false)) {
+            return
+        }
+
+        val legacyPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        val hasWidgetCreds = !prefs.getString(widgetKey(KEY_APPLICATION_KEY), null).isNullOrEmpty() ||
+                !prefs.getString(widgetKey(KEY_API_KEY), null).isNullOrEmpty() ||
+                !prefs.getString(widgetKey(KEY_MAC_ADDRESS), null).isNullOrEmpty()
+
+        if (appWidgetId != null && !hasWidgetCreds) {
+            val legacyAppKey = legacyPrefs.getString(KEY_APPLICATION_KEY, null)
+            val legacyApiKey = legacyPrefs.getString(KEY_API_KEY, null)
+            val legacyMac = legacyPrefs.getString(KEY_MAC_ADDRESS, null)
+            val legacyLocation = legacyPrefs.getString(KEY_LOCATION_NAME, null)
+
+            if (!legacyAppKey.isNullOrEmpty() && !legacyApiKey.isNullOrEmpty() && !legacyMac.isNullOrEmpty()) {
+                prefs.edit()
+                    .putString(widgetKey(KEY_APPLICATION_KEY), legacyAppKey)
+                    .putString(widgetKey(KEY_API_KEY), legacyApiKey)
+                    .putString(widgetKey(KEY_MAC_ADDRESS), legacyMac)
+                    .putString(widgetKey(KEY_LOCATION_NAME), legacyLocation)
+                    .apply()
+            }
+        }
+
+        val widgetCacheKey = widgetKey(KEY_CACHED_DATA)
+        val widgetCacheTimeKey = widgetKey(KEY_CACHE_TIME)
+        if (prefs.getString(widgetCacheKey, null) == null) {
+            val legacyCache = legacyPrefs.getString(KEY_CACHED_DATA, null)
+            if (legacyCache != null) {
+                prefs.edit()
+                    .putString(widgetCacheKey, legacyCache)
+                    .putLong(widgetCacheTimeKey, legacyPrefs.getLong(KEY_CACHE_TIME, 0))
+                    .apply()
+            }
+        }
+
+        prefs.edit().putBoolean(KEY_MIGRATION_COMPLETED_V1, true).apply()
+    }
+
     // Internal data classes for parsing
-    private data class HistoryResult(
+    internal data class HistoryResult(
         val times: List<String>,
         val speeds: List<Float>,
         val directions: List<Float>,
         val gusts: List<Float>
     )
 
-    private data class RealtimeResult(
+    internal data class RealtimeResult(
         val speed: Float,
         val direction: Float,
         val gust: Float
