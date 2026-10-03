@@ -23,6 +23,14 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 
 class EcowittDataFetcherTest {
 
+    private companion object {
+        // Answers both endpoints: history reads the "list" maps, real_time reads "value"
+        const val HISTORY_OK = """{"code":0,"msg":"success","data":{"wind":{
+            "wind_speed":{"unit":"knot","value":"11.0","list":{"1690000000":"10.5"}},
+            "wind_gust":{"unit":"knot","value":"15.0","list":{"1690000000":"15.0"}},
+            "wind_direction":{"unit":"deg","value":"80","list":{"1690000000":"80"}}}}}"""
+    }
+
     private lateinit var context: Context
     private lateinit var prefs: FakeSharedPreferences
     private lateinit var legacyPrefs: FakeSharedPreferences
@@ -185,6 +193,35 @@ class EcowittDataFetcherTest {
     }
 
     @Test
+    fun `credentials are sent as query parameters, not headers`() = runBlocking {
+        // Ecowitt rejects X-Application-Key / X-API-Key headers with 40010 (seen on the phone, 2026-10-03)
+        val requests = mutableListOf<okhttp3.Request>()
+        val fetcher = EcowittDataFetcher(context, client = stubClient(code = 200, body = HISTORY_OK, seen = requests))
+        fetcher.saveCredentials("app key&1", "apiKey", "AA:BB:CC", "My Place")
+
+        val result = fetcher.fetch(forceRefresh = true)
+
+        assertEquals(WindDataStatus.LIVE, result!!.dataStatus)
+        assertEquals(setOf("history", "real_time"), requests.map { it.url.pathSegments.last() }.toSet())
+        for (request in requests) {
+            assertEquals("app key&1", request.url.queryParameter("application_key"))
+            assertEquals("apiKey", request.url.queryParameter("api_key"))
+            assertEquals("AA:BB:CC", request.url.queryParameter("mac"))
+            assertNull(request.header("X-Application-Key"))
+            assertNull(request.header("X-API-Key"))
+        }
+    }
+
+    @Test
+    fun `error responses with an empty data array parse to null`() {
+        val fetcher = EcowittDataFetcher(context)
+        val error = """{"code":40010,"msg":"Invalid application Key","time":"1791051360","data":[]}"""
+
+        assertNull(fetcher.parseHistoryResponse(error))
+        assertNull(fetcher.parseRealtimeResponse(error))
+    }
+
+    @Test
     fun `missing credentials returns demo data without caching it`() = runBlocking {
         val fetcher = EcowittDataFetcher(context)
 
@@ -218,8 +255,13 @@ class EcowittDataFetcherTest {
         lastUpdatedMillis = System.currentTimeMillis() - 10 * 60 * 1000L
     )
 
-    private fun stubClient(code: Int, body: String): OkHttpClient = OkHttpClient.Builder()
+    private fun stubClient(
+        code: Int,
+        body: String,
+        seen: MutableList<okhttp3.Request>? = null
+    ): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
+            synchronized(this) { seen?.add(chain.request()) }
             Response.Builder()
                 .request(chain.request())
                 .protocol(Protocol.HTTP_1_1)

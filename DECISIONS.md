@@ -1,6 +1,15 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Ecowitt keys go in the query string
+**Context:** 899c204 moved `application_key`/`api_key` into `X-Application-Key`/`X-API-Key` headers to
+keep them out of URLs. Ecowitt v3 ignores those headers (40010 "Invalid application Key", checked
+against the live API), so every fetch failed and widgets showed DEMO.
+**Decision:** Keys are query parameters again, built with `HttpUrl` (encoded). URLs are never logged.
+A test asserts the keys are in the query and not in headers.
+**Consequences:** Keys are in request URLs (HTTPS, so not on the wire in clear). Don't add an OkHttp
+logging interceptor at URL level without redacting them.
+
 ## 2026-10-03 — Chart widget corners come from clipToOutline, not the bitmap
 **Context:** Review of PR #2: the bitmap is rendered at max width x max height and stretched (fitXY)
 into the real cell, whose aspect differs between portrait and landscape. A radius baked into the

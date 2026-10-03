@@ -24,6 +24,8 @@ Review of 2026-10-03, bugs (numbers match the review):
 - [x] 9. Modern chart clamps values above 20 kt; guard `size < 2` before dividing by `size - 1`
   (clamp gone with auto-fit; Chart/Bar use `coerceAtLeast(1)`, Clean/Modern guard `size < 2`)
 - [x] 10. Rounded corners rendered with ARGB_8888 (transparent corners)
+- [x] 11. Ecowitt keys sent as headers since 899c204 → every fetch failed (40010), widgets stuck on DEMO;
+  error replies (`"data": []`) also crashed the parser. Found on the phone 2026-10-03
 
 Improvements backlog:
 - [ ] Drop `updatePeriodMillis` (WorkManager already does 30 min)

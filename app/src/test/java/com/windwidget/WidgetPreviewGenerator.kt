@@ -55,7 +55,11 @@ class WidgetPreviewGenerator {
     @Test
     fun `render every style, normal and stress`() {
         File(outDir, "review").mkdirs()
-        for ((case, data) in listOf("normal" to sampleData(), "stress" to stressData())) {
+        for ((case, data) in listOf(
+            "normal" to sampleData(),
+            "stress" to stressData(),
+            "demo" to sampleData().copy(dataStatus = WindDataStatus.DEMO)
+        )) {
             // Pixel sizes ~ the providers' defaults (dp x 3). Chart clips its own corners here, as on
             // pre-Android 12 devices (on 12+ the layout's clipToOutline does it).
             val renders = mapOf(

@@ -23,7 +23,6 @@ class WindModernRenderer(private val context: Context) {
         private const val COLOR_CHART_FILL_TOP = 0x663B82F6.toInt()
         private const val COLOR_CHART_FILL_BOTTOM = 0x003B82F6.toInt()
 
-        private const val MAX_LOCATION_LENGTH = 24
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
@@ -83,23 +82,32 @@ class WindModernRenderer(private val context: Context) {
             isAntiAlias = true
         }
 
-        val locationName = if (data.locationName.length > MAX_LOCATION_LENGTH) {
-            data.locationName.take(MAX_LOCATION_LENGTH - 3) + "..."
-        } else {
-            data.locationName
-        }
-        canvas.drawText(locationName, paddingH, paddingV + 14f * scale, locationPaint)
-
-        // Update time
+        // Status, right-aligned on the title row ("UPDATED 15:16" / amber "DEMO DATA" pill)
         val timePaint = TextPaint().apply {
             color = COLOR_TEXT_MUTED
             textSize = 9f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = 0.1f
+            textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
         val statusText = data.statusText().uppercase(java.util.Locale.getDefault())
-        StatusBadge.draw(canvas, data, statusText, paddingH, paddingV + 26f * scale, timePaint, scale)
+        val titleBaseline = paddingV + 14f * scale
+        StatusBadge.draw(canvas, data, statusText, width - paddingH, titleBaseline - 1f * scale, timePaint, scale)
+
+        // Location name takes whatever is left of the row
+        val pillPadding = if (StatusBadge.isWarning(data)) 12f * scale else 0f
+        val statusWidth = timePaint.measureText(statusText) + pillPadding
+        val titleWidth = width - 2 * paddingH - statusWidth - 12f * scale
+        canvas.drawText(fitText(data.locationName, locationPaint, titleWidth), paddingH, titleBaseline, locationPaint)
+    }
+
+    /** [text] as is when it fits in [maxWidth], otherwise cut and ended with "...". */
+    private fun fitText(text: String, paint: Paint, maxWidth: Float): String {
+        if (paint.measureText(text) <= maxWidth) return text
+        val ellipsis = "..."
+        val chars = paint.breakText(text, true, maxWidth - paint.measureText(ellipsis), null)
+        return text.take(chars).trimEnd() + ellipsis
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
