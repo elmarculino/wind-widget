@@ -1,7 +1,10 @@
 package com.windwidget
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +31,10 @@ class WidgetPreviewGenerator {
     private val outDir = File("build/widget-previews").apply { mkdirs() }
     private val originalLocale = Locale.getDefault()
 
+    private companion object {
+        const val COMPACT_BG = 0xCC3A3D42.toInt()  // WindCompactRenderer.COLOR_BG
+    }
+
     // Previews show what the phone shows (decimal comma)
     @Before
     fun setLocale() = Locale.setDefault(Locale("pt", "BR"))
@@ -47,19 +54,55 @@ class WidgetPreviewGenerator {
 
     @Test
     fun `render every style, normal and stress`() {
-        val reviewDir = File(outDir, "review").apply { mkdirs() }
+        File(outDir, "review").mkdirs()
         for ((case, data) in listOf("normal" to sampleData(), "stress" to stressData())) {
-            // Pixel sizes ~ the providers' defaults (dp x 3)
+            // Pixel sizes ~ the providers' defaults (dp x 3). Chart clips its own corners here, as on
+            // pre-Android 12 devices (on 12+ the layout's clipToOutline does it).
             val renders = mapOf(
-                "chart" to WindChartRenderer(context).render(data, 1080, 540),
+                "chart" to WindChartRenderer(context).render(data, 1080, 540, clipCorners = true),
                 "bar" to WindBarRenderer(context).render(data, 1080, 300),
                 "clean" to WindCleanRenderer(context).render(data, 1080, 540),
                 "compact" to WindCompactRenderer(context).render(data, 360, 360),
                 "modern" to WindModernRenderer(context).render(data, 1080, 540)
             )
-            renders.forEach { (style, bitmap) -> save(bitmap, "review/${style}_$case.png") }
+            renders.forEach { (style, bitmap) ->
+                save(bitmap, "review/${style}_$case.png")
+                assertCornersTransparent(bitmap, "${style}_$case")
+            }
+            assertBottomEdgeEmpty(renders.getValue("compact"), COMPACT_BG, "compact_$case")
         }
-        check(reviewDir.list().orEmpty().size >= 10)
+    }
+
+    @Test
+    fun `corners stay transparent at a portrait aspect`() {
+        // Portrait 4x2 cell: narrower and taller than the design size
+        val data = stressData()
+        assertCornersTransparent(WindChartRenderer(context).render(data, 750, 690, clipCorners = true), "chart portrait")
+        assertCornersTransparent(WindCleanRenderer(context).render(data, 750, 690), "clean portrait")
+        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690), "modern portrait")
+        assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420), "compact portrait")
+    }
+
+    private fun assertCornersTransparent(bitmap: Bitmap, name: String) {
+        val w = bitmap.width - 1
+        val h = bitmap.height - 1
+        for ((x, y) in listOf(0 to 0, w to 0, 0 to h, w to h)) {
+            assertEquals("$name: alpha at corner ($x,$y)", 0, Color.alpha(bitmap.getPixel(x, y)))
+        }
+    }
+
+    /** Text pushed past the bottom (the old Compact gust line) leaves non-background pixels in the last 3%. */
+    private fun assertBottomEdgeEmpty(bitmap: Bitmap, background: Int, name: String) {
+        val band = (bitmap.height * 0.97f).toInt() until bitmap.height
+        val inner = (bitmap.width * 0.2f).toInt() until (bitmap.width * 0.8f).toInt()  // skip rounded corners
+        for (y in band) for (x in inner) {
+            val p = bitmap.getPixel(x, y)
+            // ±2 per channel: translucent colours round-trip through premultiplied alpha
+            val same = listOf(24, 16, 8, 0).all { shift ->
+                kotlin.math.abs((p ushr shift and 0xFF) - (background ushr shift and 0xFF)) <= 2
+            }
+            assertTrue("$name: content at ($x,$y): ${Integer.toHexString(p)}", same)
+        }
     }
 
     /** Offline, 30 kt and rising with strong gusts peaking at the right edge, long name, veering wind. */

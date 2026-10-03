@@ -1,6 +1,15 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Chart widget corners come from clipToOutline, not the bitmap
+**Context:** Review of PR #2: the bitmap is rendered at max width x max height and stretched (fitXY)
+into the real cell, whose aspect differs between portrait and landscape. A radius baked into the
+bitmap can't match the 16dp background in both, so opaque pixels showed in the corners.
+**Decision:** `widget_wind.xml` sets `clipToOutline` on the root, clipping to `widget_background` at
+its on-screen size (Android 12+). `WindChartRenderer` only clears its own corners below Android 12.
+**Consequences:** Exact corners on 12+; an approximation on 8–11. Rendering at the real cell size
+per orientation would fix the stretch itself (text too); not done yet.
+
 ## 2026-10-03 — Widget bitmaps use ARGB_8888
 **Context:** RGB_565 has no alpha, so the area outside each rounded card came out opaque black and the
 translucent card colours were drawn solid.

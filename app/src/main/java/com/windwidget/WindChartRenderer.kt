@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -28,7 +29,18 @@ class WindChartRenderer(private val context: Context) {
         private const val MAX_LOCATION_LENGTH = 35
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
+    /**
+     * [clipCorners]: punch the rounded corners into the bitmap. Only needed before Android 12; from
+     * Android 12 on, widget_wind.xml clips to its 16dp background via clipToOutline at the real
+     * on-screen size. The bitmap is stretched (fitXY) into a cell whose aspect differs between
+     * portrait and landscape, so corners baked into it can only approximate 16dp.
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
         // ARGB_8888 so the area outside the rounded card stays transparent
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -59,7 +71,7 @@ class WindChartRenderer(private val context: Context) {
         drawDirectionArrows(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, scale)
         drawTimeAxis(canvas, data, chartLeft, chartBottom, chartWidth, scale)
         drawBottomBar(canvas, data, width, height, bottomBarHeight, scale)
-        clearCorners(canvas, width, height, 16f * scale)  // matches widget_background's 16dp corners
+        if (clipCorners) clearCorners(canvas, width, height, 16f * scale)  // ~widget_background's 16dp
 
         return bitmap
     }

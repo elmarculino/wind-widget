@@ -7,7 +7,7 @@ Code review done (findings in PROJECT.md › Definition of done). Bugs 1–4 are
 work (saved locations, UI). Modern chart now auto-fits like Clean; Modern/Clean have rendered picker
 previews. Design review P1 on `fix/widget-design-p1` (stacked on the review PR): Compact layout,
 Modern overlap/legend, amber offline badge, gust format, transparent corners (ARGB_8888),
-16-point compass. 17 unit tests pass; CI runs them.
+16-point compass, chart clipToOutline. 18 unit tests pass (previews assert corners + Compact fit).
 
 ## Blockers
 - Not tested on a device yet.
