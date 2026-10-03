@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="0dp"
-    android:background="@drawable/widget_background_modern"
+    android:background="@drawable/widget_outline"
     android:foreground="@drawable/widget_border_modern"
     android:clipToOutline="true"
     tools:targetApi="s">

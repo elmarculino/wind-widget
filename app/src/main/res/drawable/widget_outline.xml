@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modern widget outline (Android 12+): the root clips to it; the glass fill comes from the bitmap. -->
+<!-- Widget outline (Android 12+): the root clips to it; the fill comes from the bitmap. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
 

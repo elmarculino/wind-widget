@@ -5,7 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="0dp"
-    android:background="@drawable/widget_background_horizontal">
+    android:background="@drawable/widget_background_horizontal"
+    android:clipToOutline="true"
+    tools:targetApi="s">
 
     <!-- Main chart image (wind bar + all rendering) -->
     <ImageView

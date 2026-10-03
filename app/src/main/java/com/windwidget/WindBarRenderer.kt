@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -35,7 +36,17 @@ class WindBarRenderer(private val context: Context) {
         private const val COLOR_ARROW = 0xFFFFFFFF.toInt()
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
+    /**
+     * [clipCorners]: draw rounded corners into the bitmap. Only needed before Android 12; from 12 on,
+     * the layout clips to a 16dp outline at the real on-screen size (corners baked into a
+     * fitXY-stretched bitmap grow with the widget).
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
         // ARGB_8888 so the area outside the rounded card stays transparent
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -43,12 +54,12 @@ class WindBarRenderer(private val context: Context) {
         // Calculate scale factor based on actual size
         val scale = height / 100f  // Base height is 100 units
 
-        // Draw background with rounded corners
+        // Draw background (rounded here only before Android 12)
         val bgPaint = Paint().apply {
             color = COLOR_BG
             isAntiAlias = true
         }
-        val cornerRadius = 20f * scale
+        val cornerRadius = if (clipCorners) 16f * scale else 0f
         val bgRect = RectF(0f, 0f, width.toFloat(), height.toFloat())
         canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, bgPaint)
 

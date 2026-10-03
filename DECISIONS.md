@@ -1,6 +1,15 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Every widget gets its corners from a 16dp layout outline
+**Context:** After the Modern fix, Clean, Bar and Compact still baked height-scaled corners into the
+bitmap (Compact's was 20% of its size), so they also looked rounder than other home-screen widgets.
+**Decision:** All five layouts clip to a 16dp outline on Android 12+ (`widget_outline`, or the Chart and
+Bar backgrounds, now also 16dp). Each renderer has `clipCorners`, which draws 16-unit corners only
+before Android 12. The picker previews and tests render with `clipCorners = true`.
+**Consequences:** All widgets have the same corner radius at any size. New widget styles must follow
+the same pattern.
+
 ## 2026-10-03 — Modern widget corners come from the layout outline too
 **Context:** Modern baked a 28-unit corner into its bitmap, scaled by widget height and then stretched
 by fitXY, so on a Galaxy S25 it came out ~30dp, much rounder than other home-screen widgets (~16dp).

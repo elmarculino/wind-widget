@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -25,7 +26,17 @@ class WindCleanRenderer(private val context: Context) {
         private const val MAX_LOCATION_LENGTH = 22
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
+    /**
+     * [clipCorners]: draw rounded corners into the bitmap. Only needed before Android 12; from 12 on,
+     * the layout clips to a 16dp outline at the real on-screen size (corners baked into a
+     * fitXY-stretched bitmap grow with the widget).
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
         // ARGB_8888 so the area outside the rounded card stays transparent
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -33,7 +44,7 @@ class WindCleanRenderer(private val context: Context) {
         val scale = height / 140f
 
         // Draw background
-        drawBackground(canvas, width, height, scale)
+        drawBackground(canvas, width, height, scale, clipCorners)
 
         val paddingH = 14f * scale
         val paddingV = 10f * scale
@@ -52,13 +63,14 @@ class WindCleanRenderer(private val context: Context) {
         return bitmap
     }
 
-    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float) {
+    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float, clipCorners: Boolean) {
         val paint = Paint().apply {
             color = COLOR_BG
             isAntiAlias = true
         }
-        val cornerRadius = 20f * scale
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), cornerRadius, cornerRadius, paint)
+        val bounds = RectF(0f, 0f, width.toFloat(), height.toFloat())
+        val cornerRadius = if (clipCorners) 16f * scale else 0f  // else the layout clips the corners
+        canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, paint)
     }
 
     private fun drawHeader(canvas: Canvas, data: WindData, width: Int, paddingH: Float, paddingV: Float, scale: Float) {
