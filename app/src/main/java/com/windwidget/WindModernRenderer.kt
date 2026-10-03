@@ -27,7 +27,7 @@ class WindModernRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         val scale = height / 160f
@@ -97,9 +97,7 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.1f
             isAntiAlias = true
         }
-        val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        canvas.drawText("ATUALIZADO $currentTime", paddingH, paddingV + 26f * scale, timePaint)
+        canvas.drawText(data.statusText().uppercase(java.util.Locale.getDefault()), paddingH, paddingV + 26f * scale, timePaint)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {

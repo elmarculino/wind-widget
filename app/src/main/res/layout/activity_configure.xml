@@ -24,9 +24,49 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Enter your Ecowitt API credentials"
+            android:text="Select a saved location or enter credentials manually"
             android:textColor="#B0B0B0"
             android:textSize="14sp" />
+
+        <!-- Saved Locations Dropdown -->
+        <TextView
+            android:id="@+id/savedLocationsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Saved Locations"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <Spinner
+            android:id="@+id/locationSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/spinner_background"
+            android:padding="8dp"
+            android:popupBackground="#1A1D21"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:background="#333333"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/manualEntryLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Or enter credentials manually"
+            android:textColor="#B0B0B0"
+            android:textSize="12sp"
+            android:visibility="gone" />
 
         <!-- Application Key -->
         <com.google.android.material.textfield.TextInputLayout
@@ -36,6 +76,7 @@
             android:hint="Application Key"
             app:hintTextColor="#B0B0B0"
             app:boxStrokeColor="#4ADE80"
+            app:boxBackgroundColor="#1A1D21"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -43,6 +84,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
                 android:inputType="text" />
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -55,6 +97,7 @@
             android:hint="API Key"
             app:hintTextColor="#B0B0B0"
             app:boxStrokeColor="#4ADE80"
+            app:boxBackgroundColor="#1A1D21"
             app:endIconMode="password_toggle"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -63,6 +106,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
                 android:inputType="textPassword" />
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -75,6 +119,7 @@
             android:hint="Device MAC Address"
             app:hintTextColor="#B0B0B0"
             app:boxStrokeColor="#4ADE80"
+            app:boxBackgroundColor="#1A1D21"
             app:helperText="e.g., AA:BB:CC:DD:EE:FF"
             app:helperTextTextColor="#666666"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
@@ -84,6 +129,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
                 android:inputType="text"
                 android:textAllCaps="true" />
 
@@ -97,6 +143,7 @@
             android:hint="Location Name (optional)"
             app:hintTextColor="#B0B0B0"
             app:boxStrokeColor="#4ADE80"
+            app:boxBackgroundColor="#1A1D21"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -104,6 +151,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
                 android:inputType="text" />
 
         </com.google.android.material.textfield.TextInputLayout>

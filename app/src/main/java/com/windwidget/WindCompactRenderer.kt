@@ -36,7 +36,7 @@ class WindCompactRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         val scale = minOf(width, height) / 120f
@@ -118,6 +118,14 @@ class WindCompactRenderer(private val context: Context) {
             isAntiAlias = true
         }
         canvas.drawText("gust %.1f".format(data.currentGust), centerX, speedY + 32f * scale, gustPaint)
+
+        val statusPaint = TextPaint().apply {
+            color = COLOR_TEXT_SECONDARY
+            textSize = 9f * scale
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        canvas.drawText(data.statusText(), centerX, height - 10f * scale, statusPaint)
     }
 
     private fun drawDirectionArrow(canvas: Canvas, cx: Float, cy: Float, direction: Float, size: Float, scale: Float) {

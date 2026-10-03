@@ -1,5 +1,7 @@
 package com.windwidget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.work.*
 import java.util.concurrent.TimeUnit
@@ -44,6 +46,23 @@ object WindUpdateScheduler {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
     }
 
+    fun cancelUpdatesIfNoWidgets(context: Context) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val hasWidgets = listOf(
+            WindWidget::class.java,
+            WindWidgetHorizontal::class.java,
+            WindWidgetClean::class.java,
+            WindWidgetCompact::class.java,
+            WindWidgetModern::class.java
+        ).any { provider ->
+            appWidgetManager.getAppWidgetIds(ComponentName(context, provider)).isNotEmpty()
+        }
+
+        if (!hasWidgets) {
+            cancelUpdates(context)
+        }
+    }
+
     /**
      * Force an immediate update (one-time work)
      */
@@ -70,9 +89,12 @@ class WindUpdateWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            // Update both widget types
+            // Update all widget types
             WindWidget.updateAllWidgets(applicationContext)
             WindWidgetHorizontal.updateAllWidgets(applicationContext)
+            WindWidgetClean.updateAllWidgets(applicationContext)
+            WindWidgetCompact.updateAllWidgets(applicationContext)
+            WindWidgetModern.updateAllWidgets(applicationContext)
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

@@ -4,19 +4,36 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 /**
  * Configuration activity shown when adding a new widget instance.
- * Allows users to configure Ecowitt API credentials.
+ * Allows users to select a saved location or configure Ecowitt API credentials manually.
  */
 class WindWidgetConfigureActivity : AppCompatActivity() {
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var fetcher: EcowittDataFetcher
+    private lateinit var locationManager: LocationManager
+
+    private lateinit var appKeyInput: EditText
+    private lateinit var apiKeyInput: EditText
+    private lateinit var macAddressInput: EditText
+    private lateinit var locationInput: EditText
+    private lateinit var locationSpinner: Spinner
+    private lateinit var savedLocationsLabel: TextView
+    private lateinit var divider: View
+    private lateinit var manualEntryLabel: TextView
+
+    private var savedLocations: List<SavedLocation> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,8 +42,6 @@ class WindWidgetConfigureActivity : AppCompatActivity() {
         setResult(Activity.RESULT_CANCELED)
 
         setContentView(R.layout.activity_configure)
-
-        fetcher = EcowittDataFetcher(this)
 
         // Get the widget ID from the intent
         appWidgetId = intent.extras?.getInt(
@@ -39,53 +54,142 @@ class WindWidgetConfigureActivity : AppCompatActivity() {
             return
         }
 
+        fetcher = EcowittDataFetcher(this, appWidgetId)
+        locationManager = LocationManager(this)
+
         setupUI()
     }
 
     private fun setupUI() {
-        val appKeyInput = findViewById<EditText>(R.id.appKeyInput)
-        val apiKeyInput = findViewById<EditText>(R.id.apiKeyInput)
-        val macAddressInput = findViewById<EditText>(R.id.macAddressInput)
-        val locationInput = findViewById<EditText>(R.id.locationInput)
+        appKeyInput = findViewById(R.id.appKeyInput)
+        apiKeyInput = findViewById(R.id.apiKeyInput)
+        macAddressInput = findViewById(R.id.macAddressInput)
+        locationInput = findViewById(R.id.locationInput)
+        locationSpinner = findViewById(R.id.locationSpinner)
+        savedLocationsLabel = findViewById(R.id.savedLocationsLabel)
+        divider = findViewById(R.id.divider)
+        manualEntryLabel = findViewById(R.id.manualEntryLabel)
         val confirmButton = findViewById<Button>(R.id.confirmButton)
 
-        // Load existing credentials if any
-        val prefs = getSharedPreferences("wind_widget_prefs", MODE_PRIVATE)
-        appKeyInput.setText(prefs.getString(EcowittDataFetcher.KEY_APPLICATION_KEY, ""))
-        apiKeyInput.setText(prefs.getString(EcowittDataFetcher.KEY_API_KEY, ""))
-        macAddressInput.setText(prefs.getString(EcowittDataFetcher.KEY_MAC_ADDRESS, ""))
-        locationInput.setText(prefs.getString(EcowittDataFetcher.KEY_LOCATION_NAME, "São Miguel dos Milagres - Alagoas, MiCasa"))
+        // Load saved locations
+        savedLocations = locationManager.getLocations()
+
+        if (savedLocations.isNotEmpty()) {
+            setupLocationSpinner()
+        } else {
+            // Load existing credentials if any
+            loadExistingCredentials()
+        }
 
         confirmButton.setOnClickListener {
-            val appKey = appKeyInput.text.toString().trim()
-            val apiKey = apiKeyInput.text.toString().trim()
-            val macAddress = macAddressInput.text.toString().trim()
-            val locationName = locationInput.text.toString().ifEmpty {
-                "São Miguel dos Milagres - Alagoas, MiCasa"
-            }
-
-            // Validate inputs
-            if (appKey.isEmpty() || apiKey.isEmpty() || macAddress.isEmpty()) {
-                Toast.makeText(this, "Please fill in all Ecowitt API fields", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            // Save credentials
-            fetcher.saveCredentials(appKey, apiKey, macAddress, locationName)
-
-            // Update the widget
-            val appWidgetManager = AppWidgetManager.getInstance(this)
-            WindWidget.updateWidget(this, appWidgetManager, appWidgetId)
-
-            // Schedule periodic updates
-            WindUpdateScheduler.scheduleUpdates(this)
-
-            // Return success
-            val resultIntent = Intent().apply {
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            }
-            setResult(Activity.RESULT_OK, resultIntent)
-            finish()
+            saveAndFinish()
         }
+    }
+
+    private fun setupLocationSpinner() {
+        savedLocationsLabel.visibility = View.VISIBLE
+        locationSpinner.visibility = View.VISIBLE
+        divider.visibility = View.VISIBLE
+        manualEntryLabel.visibility = View.VISIBLE
+
+        // Create spinner items: "Select a location..." + saved locations + "Enter manually"
+        val spinnerItems = mutableListOf("Select a location...")
+        spinnerItems.addAll(savedLocations.map { it.name })
+        spinnerItems.add("Enter manually")
+
+        val adapter = ArrayAdapter(
+            this,
+            R.layout.spinner_item,
+            spinnerItems
+        )
+        adapter.setDropDownViewResource(R.layout.spinner_dropdown_item)
+        locationSpinner.adapter = adapter
+
+        locationSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                when {
+                    position == 0 -> {
+                        // "Select a location..." - load existing credentials
+                        loadExistingCredentials()
+                    }
+                    position <= savedLocations.size -> {
+                        // A saved location was selected
+                        val location = savedLocations[position - 1]
+                        fillFieldsFromLocation(location)
+                    }
+                    else -> {
+                        // "Enter manually" - clear fields
+                        clearFields()
+                    }
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                loadExistingCredentials()
+            }
+        }
+    }
+
+    private fun loadExistingCredentials() {
+        val credentials = fetcher.loadCredentials()
+        appKeyInput.setText(credentials?.applicationKey ?: "")
+        apiKeyInput.setText(credentials?.apiKey ?: "")
+        macAddressInput.setText(credentials?.macAddress ?: "")
+        locationInput.setText(credentials?.locationName ?: "")
+    }
+
+    private fun fillFieldsFromLocation(location: SavedLocation) {
+        appKeyInput.setText(location.applicationKey)
+        apiKeyInput.setText(location.apiKey)
+        macAddressInput.setText(location.macAddress)
+        locationInput.setText(location.name)
+    }
+
+    private fun clearFields() {
+        appKeyInput.text.clear()
+        apiKeyInput.text.clear()
+        macAddressInput.text.clear()
+        locationInput.text.clear()
+    }
+
+    private fun saveAndFinish() {
+        val appKey = appKeyInput.text.toString().trim()
+        val apiKey = apiKeyInput.text.toString().trim()
+        val macAddress = macAddressInput.text.toString().trim()
+        val locationName = locationInput.text.toString().ifEmpty {
+            "Wind Station"
+        }
+
+        // Validate inputs
+        if (appKey.isEmpty() || apiKey.isEmpty() || macAddress.isEmpty()) {
+            Toast.makeText(this, "Please fill in all Ecowitt API fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Save credentials
+        fetcher.saveCredentials(appKey, apiKey, macAddress, locationName)
+
+        // Update the widget - determine which type based on the provider class
+        val appWidgetManager = AppWidgetManager.getInstance(this)
+        val providerInfo = appWidgetManager.getAppWidgetInfo(appWidgetId)
+        val providerClassName = providerInfo?.provider?.className
+
+        when (providerClassName) {
+            "com.windwidget.WindWidgetModern" -> WindWidgetModern.updateWidget(this, appWidgetManager, appWidgetId)
+            "com.windwidget.WindWidgetClean" -> WindWidgetClean.updateWidget(this, appWidgetManager, appWidgetId)
+            "com.windwidget.WindWidgetCompact" -> WindWidgetCompact.updateWidget(this, appWidgetManager, appWidgetId)
+            "com.windwidget.WindWidgetHorizontal" -> WindWidgetHorizontal.updateWidget(this, appWidgetManager, appWidgetId)
+            else -> WindWidget.updateWidget(this, appWidgetManager, appWidgetId)
+        }
+
+        // Schedule periodic updates
+        WindUpdateScheduler.scheduleUpdates(this)
+
+        // Return success
+        val resultIntent = Intent().apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        }
+        setResult(Activity.RESULT_OK, resultIntent)
+        finish()
     }
 }

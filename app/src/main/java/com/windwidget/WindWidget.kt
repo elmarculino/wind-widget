@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Wind Chart Widget Provider (4x2)
@@ -51,7 +52,7 @@ class WindWidget : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
             try {
-                val fetcher = EcowittDataFetcher(context)
+                val fetcher = EcowittDataFetcher(context, appWidgetId)
                 val windData = fetcher.fetch() ?: fetcher.generateDemoData()
 
                 // Get actual widget size
@@ -59,7 +60,9 @@ class WindWidget : AppWidgetProvider() {
                 val (widthPx, heightPx) = getWidgetSizeInPixels(context, options)
 
                 val renderer = WindChartRenderer(context)
-                val bitmap = renderer.render(windData, widthPx, heightPx)
+                val bitmap = withContext(Dispatchers.Default) {
+                    renderer.render(windData, widthPx, heightPx)
+                }
 
                 views.setImageViewBitmap(R.id.windChart, bitmap)
                 views.setViewVisibility(R.id.loadingIndicator, View.GONE)
@@ -132,6 +135,6 @@ class WindWidget : AppWidgetProvider() {
     }
 
     override fun onDisabled(context: Context) {
-        WindUpdateScheduler.cancelUpdates(context)
+        WindUpdateScheduler.cancelUpdatesIfNoWidgets(context)
     }
 }

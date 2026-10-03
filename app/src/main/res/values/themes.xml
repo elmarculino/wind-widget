@@ -11,6 +11,18 @@
         <item name="android:statusBarColor">#0D0F12</item>
         <item name="android:navigationBarColor">#0D0F12</item>
         <item name="android:windowBackground">#0D0F12</item>
+        
+        <!-- Text colors for dark theme -->
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:textColorSecondary">#B0B0B0</item>
+        <item name="android:textColorHint">#666666</item>
+        <item name="editTextColor">#FFFFFF</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        
+        <!-- Material TextInput colors -->
+        <item name="colorControlNormal">#B0B0B0</item>
+        <item name="colorControlActivated">#4ADE80</item>
+        <item name="colorControlHighlight">#4ADE80</item>
     </style>
 
     <style name="Theme.WindWidget.Configure" parent="Theme.WindWidget">

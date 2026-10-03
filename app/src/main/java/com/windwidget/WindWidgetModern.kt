@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
@@ -50,14 +51,16 @@ class WindWidgetModern : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
             try {
-                val fetcher = EcowittDataFetcher(context)
+                val fetcher = EcowittDataFetcher(context, appWidgetId)
                 val windData = fetcher.fetch() ?: fetcher.generateDemoData()
 
                 val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
                 val (widthPx, heightPx) = getWidgetSizeInPixels(context, options)
 
                 val renderer = WindModernRenderer(context)
-                val bitmap = renderer.render(windData, widthPx, heightPx)
+                val bitmap = withContext(Dispatchers.Default) {
+                    renderer.render(windData, widthPx, heightPx)
+                }
 
                 views.setImageViewBitmap(R.id.windChart, bitmap)
                 views.setViewVisibility(R.id.loadingIndicator, View.GONE)
@@ -127,6 +130,6 @@ class WindWidgetModern : AppWidgetProvider() {
     }
 
     override fun onDisabled(context: Context) {
-        // Don't cancel updates - other widgets might still be active
+        WindUpdateScheduler.cancelUpdatesIfNoWidgets(context)
     }
 }

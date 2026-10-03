@@ -26,7 +26,7 @@ class WindCleanRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         val scale = height / 140f
@@ -83,9 +83,7 @@ class WindCleanRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        canvas.drawText("Last update $currentTime", width - paddingH, paddingV + 12f * scale, timePaint)
+        canvas.drawText(data.statusText(), width - paddingH, paddingV + 12f * scale, timePaint)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
