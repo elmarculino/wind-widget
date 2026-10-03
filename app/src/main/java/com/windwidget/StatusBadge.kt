@@ -7,8 +7,8 @@ import android.graphics.Typeface
 import android.text.TextPaint
 
 /**
- * Draws the data status line ("Updated 15:16", "Offline 15:16", ...) for every widget style.
- * STALE and DEMO data get an amber pill so an old or fake reading never looks live.
+ * Draws the data status ("15:16", "Demo") for every widget style. STALE (offline) shows the time of
+ * the last real reading in bold amber, so an old reading never looks live; DEMO also gets an amber pill.
  */
 object StatusBadge {
 
@@ -18,9 +18,12 @@ object StatusBadge {
     fun isWarning(data: WindData): Boolean =
         data.dataStatus == WindDataStatus.STALE || data.dataStatus == WindDataStatus.DEMO
 
+    /** Only demo data gets the pill; an offline time is amber text alone. */
+    fun hasPill(data: WindData): Boolean = data.dataStatus == WindDataStatus.DEMO
+
     /**
      * Draws [text] at ([x], [baseline]) honouring [paint]'s alignment. Live/cached data is drawn
-     * with [paint] as is; warning states are drawn bold amber inside a pill that stays within [x].
+     * with [paint] as is; warning states are bold amber, DEMO inside a pill that stays within [x].
      */
     fun draw(canvas: Canvas, data: WindData, text: String, x: Float, baseline: Float, paint: TextPaint, scale: Float) {
         if (!isWarning(data)) {
@@ -32,6 +35,11 @@ object StatusBadge {
             color = COLOR_WARNING
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
+        if (!hasPill(data)) {
+            canvas.drawText(text, x, baseline, warnPaint)
+            return
+        }
+
         val padH = 6f * scale
         val padV = 2f * scale
         val textWidth = warnPaint.measureText(text)

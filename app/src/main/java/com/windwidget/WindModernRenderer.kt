@@ -96,7 +96,7 @@ class WindModernRenderer(private val context: Context) {
         StatusBadge.draw(canvas, data, statusText, width - paddingH, titleBaseline - 1f * scale, timePaint, scale)
 
         // Location name takes whatever is left of the row
-        val pillPadding = if (StatusBadge.isWarning(data)) 12f * scale else 0f
+        val pillPadding = if (StatusBadge.hasPill(data)) 12f * scale else 0f
         val statusWidth = timePaint.measureText(statusText) + pillPadding
         val titleWidth = width - 2 * paddingH - statusWidth - 12f * scale
         canvas.drawText(fitText(data.locationName, locationPaint, titleWidth), paddingH, titleBaseline, locationPaint)

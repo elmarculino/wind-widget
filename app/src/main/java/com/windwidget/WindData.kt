@@ -51,13 +51,12 @@ data class WindData(
         }
     }
 
-    /** Live/cached readings show just the time; offline keeps its word so an old reading never looks fresh. */
+    /** Just the time of the reading; offline is told apart by colour (see StatusBadge). */
     fun statusText(): String {
         val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(lastUpdatedMillis))
         return when (dataStatus) {
-            WindDataStatus.LIVE, WindDataStatus.CACHED -> time
-            WindDataStatus.STALE -> "Offline $time"
+            WindDataStatus.LIVE, WindDataStatus.CACHED, WindDataStatus.STALE -> time
             WindDataStatus.DEMO -> "Demo"
         }
     }

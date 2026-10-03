@@ -1,6 +1,13 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Status shows only the time; offline is amber
+**Context:** "Updated 19:14" / "Offline 19:14" / "Demo data" took room from the title on narrow widgets.
+**Decision:** The status is just the reading time for LIVE, CACHED and STALE, and "Demo" for demo
+data. STALE is told apart only by bold amber text; DEMO keeps the amber pill since it is not a reading.
+**Consequences:** Offline relies on colour plus bold weight, which is weaker for colour-blind users. If
+that becomes a problem, add an icon or the pill back for STALE (`StatusBadge.hasPill`).
+
 ## 2026-10-03 — Ecowitt keys go in the query string
 **Context:** 899c204 moved `application_key`/`api_key` into `X-Application-Key`/`X-API-Key` headers to
 keep them out of URLs. Ecowitt v3 ignores those headers (40010 "Invalid application Key", checked
