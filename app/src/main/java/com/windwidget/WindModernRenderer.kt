@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -25,7 +26,17 @@ class WindModernRenderer(private val context: Context) {
 
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
+    /**
+     * [clipCorners]: draw the rounded card and its border into the bitmap. Only needed before
+     * Android 12; from 12 on, widget_wind_modern.xml clips to a 16dp outline and draws the border
+     * at the real on-screen size (corners baked into a fitXY-stretched bitmap grow with the widget).
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
         // ARGB_8888 so the area outside the rounded card stays transparent
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -33,7 +44,7 @@ class WindModernRenderer(private val context: Context) {
         val scale = height / 160f
 
         // Draw background
-        drawBackground(canvas, width, height, scale)
+        drawBackground(canvas, width, height, scale, clipCorners)
 
         val paddingH = 20f * scale
         val paddingV = 16f * scale
@@ -55,13 +66,18 @@ class WindModernRenderer(private val context: Context) {
         return bitmap
     }
 
-    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float) {
+    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float, clipCorners: Boolean) {
         val paint = Paint().apply {
             color = COLOR_BG
             isAntiAlias = true
         }
-        val cornerRadius = 28f * scale
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), cornerRadius, cornerRadius, paint)
+        val bounds = RectF(0f, 0f, width.toFloat(), height.toFloat())
+        if (!clipCorners) {
+            canvas.drawRect(bounds, paint)  // the layout clips the corners and draws the border
+            return
+        }
+        val cornerRadius = 16f * scale  // ~the layout's 16dp at the default height
+        canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, paint)
 
         // Subtle border
         val borderPaint = Paint().apply {
@@ -70,7 +86,7 @@ class WindModernRenderer(private val context: Context) {
             strokeWidth = 1f * scale
             isAntiAlias = true
         }
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), cornerRadius, cornerRadius, borderPaint)
+        canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, borderPaint)
     }
 
     private fun drawHeader(canvas: Canvas, data: WindData, width: Int, paddingH: Float, paddingV: Float, scale: Float) {

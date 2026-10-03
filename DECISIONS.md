@@ -1,6 +1,15 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Modern widget corners come from the layout outline too
+**Context:** Modern baked a 28-unit corner into its bitmap, scaled by widget height and then stretched
+by fitXY, so on a Galaxy S25 it came out ~30dp, much rounder than other home-screen widgets (~16dp).
+**Decision:** Same as the Chart widget: on Android 12+ `widget_wind_modern.xml` clips to a 16dp
+outline and draws the 1dp border as a foreground; the bitmap is a plain rectangle. Before 12 the
+bitmap draws its own 16-unit corners (`clipCorners`).
+**Consequences:** Corners stay 16dp at any size. Clean, Bar and Compact still bake height-scaled
+corners into the bitmap; move them over the same way if they look too round.
+
 ## 2026-10-03 — Status shows only the time; offline is amber
 **Context:** "Updated 19:14" / "Offline 19:14" / "Demo data" took room from the title on narrow widgets.
 **Decision:** The status is just the reading time for LIVE, CACHED and STALE, and "Demo" for demo

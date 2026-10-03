@@ -44,7 +44,7 @@ class WidgetPreviewGenerator {
 
     @Test
     fun `render modern preview`() {
-        save(WindModernRenderer(context).render(sampleData(), 1160, 600), "widget_preview_modern.png")
+        save(WindModernRenderer(context).render(sampleData(), 1160, 600, clipCorners = true), "widget_preview_modern.png")
     }
 
     @Test
@@ -67,7 +67,7 @@ class WidgetPreviewGenerator {
                 "bar" to WindBarRenderer(context).render(data, 1080, 300),
                 "clean" to WindCleanRenderer(context).render(data, 1080, 540),
                 "compact" to WindCompactRenderer(context).render(data, 360, 360),
-                "modern" to WindModernRenderer(context).render(data, 1080, 540)
+                "modern" to WindModernRenderer(context).render(data, 1080, 540, clipCorners = true)
             )
             renders.forEach { (style, bitmap) ->
                 save(bitmap, "review/${style}_$case.png")
@@ -83,7 +83,7 @@ class WidgetPreviewGenerator {
         val data = stressData()
         assertCornersTransparent(WindChartRenderer(context).render(data, 750, 690, clipCorners = true), "chart portrait")
         assertCornersTransparent(WindCleanRenderer(context).render(data, 750, 690), "clean portrait")
-        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690), "modern portrait")
+        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690, clipCorners = true), "modern portrait")
         assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420), "compact portrait")
     }
 
