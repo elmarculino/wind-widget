@@ -18,7 +18,9 @@ import java.util.Locale
 
 /**
  * Renders widget previews with the real renderers (Robolectric native graphics).
- * Output: app/build/widget-previews/. Copy into res/drawable-nodpi/ when a renderer changes.
+ * Output: app/build/widget-previews/. Copy the widget_preview_*.png files into res/drawable-nodpi/
+ * when a renderer changes. review/ holds every style in a normal and a stress case (offline,
+ * strong gusty wind, long name, shifting direction) for eyeballing layout problems.
  * Doubles as a smoke test that the renderers draw without crashing.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -51,6 +53,38 @@ class WidgetPreviewGenerator {
         val height = 600
         val bitmap = WindCleanRenderer(context).render(sampleData(), 1160, height)
         save(roundCorners(bitmap, 20f * height / 140f), "widget_preview_clean.png")
+    }
+
+    @Test
+    fun `render every style, normal and stress`() {
+        val reviewDir = File(outDir, "review").apply { mkdirs() }
+        for ((case, data) in listOf("normal" to sampleData(), "stress" to stressData())) {
+            // Pixel sizes ~ the providers' defaults (dp x 3)
+            val renders = mapOf(
+                "chart" to WindChartRenderer(context).render(data, 1080, 540),
+                "bar" to WindBarRenderer(context).render(data, 1080, 300),
+                "clean" to WindCleanRenderer(context).render(data, 1080, 540),
+                "compact" to WindCompactRenderer(context).render(data, 360, 360),
+                "modern" to WindModernRenderer(context).render(data, 1080, 540)
+            )
+            renders.forEach { (style, bitmap) -> save(bitmap, "review/${style}_$case.png") }
+        }
+        check(reviewDir.list().orEmpty().size >= 10)
+    }
+
+    /** Offline, 30 kt and rising with strong gusts peaking at the right edge, long name, veering wind. */
+    private fun stressData(): WindData {
+        val speeds = (0 until 36).map { 14f + it * 0.45f + if (it % 3 == 0) 3f else 0f }
+        return sampleData().copy(
+            locationName = "Praia do Patacho - Porto de Pedras, Alagoas (estação 2)",
+            speeds = speeds,
+            directions = speeds.indices.map { (it * 10f) % 360 },
+            gusts = speeds.map { it * 1.6f },
+            currentSpeed = speeds.last(),
+            currentDirection = 350f,
+            currentGust = speeds.last() * 1.6f,
+            dataStatus = WindDataStatus.STALE
+        )
     }
 
     /** Deterministic 3h series shaped like a real afternoon at the MiCasa station. */

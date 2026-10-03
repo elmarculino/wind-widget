@@ -83,7 +83,7 @@ class WindCleanRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText(), width - paddingH, paddingV + 12f * scale, timePaint)
+        StatusBadge.draw(canvas, data, data.statusText(), width - paddingH, paddingV + 12f * scale, timePaint, scale)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
@@ -133,7 +133,7 @@ class WindCleanRenderer(private val context: Context) {
             textSize = 11f * scale
             isAntiAlias = true
         }
-        val gustText = "gust ${data.currentGust.roundToInt()} kts"
+        val gustText = "gust %.1f kts".format(data.currentGust)
         canvas.drawText(gustText, paddingH + infoPaint.measureText(dirText) + 12f * scale, top + 46f * scale, gustPaint)
     }
 

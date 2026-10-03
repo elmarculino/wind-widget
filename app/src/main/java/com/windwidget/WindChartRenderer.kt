@@ -94,7 +94,7 @@ class WindChartRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText(), width - 10f * scale, 24f * scale, timePaint)
+        StatusBadge.draw(canvas, data, data.statusText(), width - 10f * scale, 24f * scale, timePaint, scale)
     }
 
     private fun calculateMaxY(data: WindData): Float {

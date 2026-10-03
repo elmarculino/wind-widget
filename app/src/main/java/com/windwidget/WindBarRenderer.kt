@@ -97,7 +97,7 @@ class WindBarRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText(), width - paddingH, paddingV + 14f * scale, timePaint)
+        StatusBadge.draw(canvas, data, data.statusText(), width - paddingH, paddingV + 14f * scale, timePaint, scale)
     }
 
     private fun drawCurrentWind(canvas: Canvas, data: WindData, left: Float, top: Float, bottom: Float, scale: Float) {

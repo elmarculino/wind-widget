@@ -1,6 +1,14 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Stale and demo data get an amber status badge on every widget
+**Context:** "Offline 15:16" was drawn in the same small grey text as "Updated 15:16", so an old
+reading looked live at a glance.
+**Decision:** `StatusBadge.draw` renders the status line for all 5 styles; STALE and DEMO are bold amber
+inside an amber pill. LIVE and CACHED keep the plain style (CACHED is a recent real reading).
+**Consequences:** One place to change status styling. The numbers themselves are not dimmed; if that
+turns out not to be enough on the phone, dim them next.
+
 ## 2026-10-03 — Modern chart auto-fits its Y axis; picker previews rendered from the real renderers
 **Context:** Modern used a fixed 0–20 kt axis, so a typical 11–14 kt window filled ~15% of the height and
 looked like a flat line next to Clean (which fits min..max of the 3h window). Modern and Clean pointed

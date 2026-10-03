@@ -40,6 +40,13 @@ Improvements backlog:
 - [x] Modern chart line auto-fits like Clean
 - [x] Rendered picker previews for Modern and Clean (Chart, Bar, Compact still generic)
 
+Design review of 2026-10-03:
+- [x] P1: Compact layout fits 2x2; Modern chart clear of the direction circle; Modern legend matches
+  the chart; STALE/DEMO shown as an amber badge on every widget; gust always 1 decimal
+- [ ] P2: one shared wind colour scale for speed and gust; 16-point compass (ENE, not E)
+- [ ] P3: one UI language via strings.xml; Chart cleanup (round Y ticks, arrows off the line,
+  gust bars labelled, lighter bottom row); Bar colour legend; short label per saved location
+
 ## Links
 - README (setup/usage): [README.md](README.md)
 - Design notes: [docs/plans/](docs/plans/)

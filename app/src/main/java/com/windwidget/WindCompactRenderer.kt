@@ -62,11 +62,22 @@ class WindCompactRenderer(private val context: Context) {
 
     private fun drawWindInfo(canvas: Canvas, data: WindData, width: Int, height: Int, scale: Float) {
         val centerX = width / 2f
-        val centerY = height / 2f
+        // Layout is designed on a 120x120 box; centre that box vertically when the widget isn't square
+        val top = (height - 120f * scale) / 2f
+        fun y(units: Float) = top + units * scale
 
-        // Direction arrow in circle (top center)
-        val arrowCircleRadius = 28f * scale
-        val arrowCircleY = centerY - 30f * scale
+        // Status (top)
+        val statusPaint = TextPaint().apply {
+            color = COLOR_TEXT_SECONDARY
+            textSize = 8f * scale
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        StatusBadge.draw(canvas, data, data.statusText(), centerX, y(15f), statusPaint, scale)
+
+        // Direction arrow in circle
+        val arrowCircleRadius = 17f * scale
+        val arrowCircleY = y(38f)
 
         val circlePaint = Paint().apply {
             color = COLOR_ARROW_BG
@@ -81,51 +92,44 @@ class WindCompactRenderer(private val context: Context) {
         // Direction text (e.g., "E 74°") below arrow
         val dirPaint = TextPaint().apply {
             color = COLOR_TEXT_PRIMARY
-            textSize = 14f * scale
+            textSize = 11f * scale
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}°", centerX, arrowCircleY + arrowCircleRadius + 16f * scale, dirPaint)
+        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}°", centerX, y(69f), dirPaint)
 
-        // Wind speed (large, colored)
-        val speedColor = getColorForSpeed(data.currentSpeed)
+        // Wind speed (large, colored) with "kts" inline, centred as one group
         val speedPaint = TextPaint().apply {
-            color = speedColor
-            textSize = 28f * scale
-            textAlign = Paint.Align.CENTER
+            color = getColorForSpeed(data.currentSpeed)
+            textSize = 26f * scale
+            textAlign = Paint.Align.LEFT
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        val speedY = centerY + 36f * scale
-        canvas.drawText("%.1f".format(data.currentSpeed), centerX, speedY, speedPaint)
-
-        // "kts" label
         val unitPaint = TextPaint().apply {
             color = COLOR_TEXT_SECONDARY
-            textSize = 12f * scale
-            textAlign = Paint.Align.CENTER
+            textSize = 11f * scale
+            textAlign = Paint.Align.LEFT
             isAntiAlias = true
         }
-        canvas.drawText("kts", centerX, speedY + 14f * scale, unitPaint)
+        val speedText = "%.1f".format(data.currentSpeed)
+        val unitGap = 3f * scale
+        val groupWidth = speedPaint.measureText(speedText) + unitGap + unitPaint.measureText("kts")
+        val speedX = centerX - groupWidth / 2
+        val speedY = y(96f)
+        canvas.drawText(speedText, speedX, speedY, speedPaint)
+        canvas.drawText("kts", speedX + speedPaint.measureText(speedText) + unitGap, speedY, unitPaint)
 
         // Gust info (bottom)
         val gustPaint = TextPaint().apply {
             color = COLOR_GUST
-            textSize = 13f * scale
+            textSize = 11f * scale
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        canvas.drawText("gust %.1f".format(data.currentGust), centerX, speedY + 32f * scale, gustPaint)
-
-        val statusPaint = TextPaint().apply {
-            color = COLOR_TEXT_SECONDARY
-            textSize = 9f * scale
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-        canvas.drawText(data.statusText(), centerX, height - 10f * scale, statusPaint)
+        canvas.drawText("gust %.1f".format(data.currentGust), centerX, y(111f), gustPaint)
     }
 
     private fun drawDirectionArrow(canvas: Canvas, cx: Float, cy: Float, direction: Float, size: Float, scale: Float) {
