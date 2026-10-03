@@ -1,6 +1,14 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Widget bitmaps use ARGB_8888
+**Context:** RGB_565 has no alpha, so the area outside each rounded card came out opaque black and the
+translucent card colours were drawn solid.
+**Decision:** All 5 renderers create ARGB_8888 bitmaps. Chart fills its full rect, so it clears the
+corners outside a 16dp round rect (matching `widget_background`).
+**Consequences:** Twice the bitmap memory per widget. Rendering at 1x density (backlog) would offset it
+if RemoteViews size limits are ever hit.
+
 ## 2026-10-03 — Stale and demo data get an amber status badge on every widget
 **Context:** "Offline 15:16" was drawn in the same small grey text as "Updated 15:16", so an old
 reading looked live at a glance.

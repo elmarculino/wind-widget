@@ -21,8 +21,9 @@ Review of 2026-10-03, bugs (numbers match the review):
 - [ ] 6. Plain-text legacy API keys removed after migration; `SecurePrefs` fallback never writes plain text to the encrypted file
 - [ ] 7. Loading state uses `partiallyUpdateAppWidget`; error path keeps the tap handler (all 5 providers)
 - [ ] 8. HTTP responses always closed (`response.use {}`)
-- [ ] 9. Modern chart clamps values above 20 kt; guard `size < 2` before dividing by `size - 1`
-- [ ] 10. Rounded corners rendered with ARGB_8888 (transparent corners)
+- [x] 9. Modern chart clamps values above 20 kt; guard `size < 2` before dividing by `size - 1`
+  (clamp gone with auto-fit; Chart/Bar use `coerceAtLeast(1)`, Clean/Modern guard `size < 2`)
+- [x] 10. Rounded corners rendered with ARGB_8888 (transparent corners)
 
 Improvements backlog:
 - [ ] Drop `updatePeriodMillis` (WorkManager already does 30 min)
@@ -43,7 +44,8 @@ Improvements backlog:
 Design review of 2026-10-03:
 - [x] P1: Compact layout fits 2x2; Modern chart clear of the direction circle; Modern legend matches
   the chart; STALE/DEMO shown as an amber badge on every widget; gust always 1 decimal
-- [ ] P2: one shared wind colour scale for speed and gust; 16-point compass (ENE, not E)
+- [ ] P2: one shared wind colour scale for speed and gust
+- [x] P2: 16-point compass (ENE, not E)
 - [ ] P3: one UI language via strings.xml; Chart cleanup (round Y ticks, arrows off the line,
   gust bars labelled, lighter bottom row); Bar colour legend; short label per saved location
 

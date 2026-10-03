@@ -1,10 +1,6 @@
 package com.windwidget
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -41,18 +37,12 @@ class WidgetPreviewGenerator {
 
     @Test
     fun `render modern preview`() {
-        // Modern: scale = height / 160, corner radius 28 * scale
-        val height = 600
-        val bitmap = WindModernRenderer(context).render(sampleData(), 1160, height)
-        save(roundCorners(bitmap, 28f * height / 160f), "widget_preview_modern.png")
+        save(WindModernRenderer(context).render(sampleData(), 1160, 600), "widget_preview_modern.png")
     }
 
     @Test
     fun `render clean preview`() {
-        // Clean: scale = height / 140, corner radius 20 * scale
-        val height = 600
-        val bitmap = WindCleanRenderer(context).render(sampleData(), 1160, height)
-        save(roundCorners(bitmap, 20f * height / 140f), "widget_preview_clean.png")
+        save(WindCleanRenderer(context).render(sampleData(), 1160, 600), "widget_preview_clean.png")
     }
 
     @Test
@@ -81,7 +71,7 @@ class WidgetPreviewGenerator {
             directions = speeds.indices.map { (it * 10f) % 360 },
             gusts = speeds.map { it * 1.6f },
             currentSpeed = speeds.last(),
-            currentDirection = 350f,
+            currentDirection = 300f,  // WNW: longest 16-point label
             currentGust = speeds.last() * 1.6f,
             dataStatus = WindDataStatus.STALE
         )
@@ -110,18 +100,6 @@ class WidgetPreviewGenerator {
             dataStatus = WindDataStatus.LIVE,
             lastUpdatedMillis = 1791051360000L
         )
-    }
-
-    /** Renderers draw on RGB_565 (no alpha): make the area outside the rounded card transparent. */
-    private fun roundCorners(src: Bitmap, radius: Float): Bitmap {
-        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(out)
-        val clip = Path().apply {
-            addRoundRect(RectF(0f, 0f, src.width.toFloat(), src.height.toFloat()), radius, radius, Path.Direction.CW)
-        }
-        canvas.clipPath(clip)
-        canvas.drawBitmap(src, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-        return out
     }
 
     private fun save(bitmap: Bitmap, name: String) {
