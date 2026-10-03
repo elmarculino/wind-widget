@@ -51,14 +51,13 @@ data class WindData(
         }
     }
 
+    /** Just the time of the reading; offline is told apart by colour (see StatusBadge). */
     fun statusText(): String {
         val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(lastUpdatedMillis))
         return when (dataStatus) {
-            WindDataStatus.LIVE -> "Updated $time"
-            WindDataStatus.CACHED -> "Cached $time"
-            WindDataStatus.STALE -> "Offline $time"
-            WindDataStatus.DEMO -> "Demo data"
+            WindDataStatus.LIVE, WindDataStatus.CACHED, WindDataStatus.STALE -> time
+            WindDataStatus.DEMO -> "Demo"
         }
     }
 }

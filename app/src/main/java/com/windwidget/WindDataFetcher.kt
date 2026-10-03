@@ -3,14 +3,16 @@ package com.windwidget
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -136,19 +138,15 @@ class EcowittDataFetcher(
         val endDate = Date()
         val startDate = Date(endDate.time - 3 * 60 * 60 * 1000) // 3 hours ago
 
-        val url = "https://api.ecowitt.net/api/v3/device/history?" +
-                "mac=${URLEncoder.encode(mac, "UTF-8")}" +
-                "&start_date=${URLEncoder.encode(dateFormat.format(startDate), "UTF-8")}" +
-                "&end_date=${URLEncoder.encode(dateFormat.format(endDate), "UTF-8")}" +
-                "&cycle_type=5min" +
-                "&call_back=wind" +
-                "&wind_speed_unitid=$WIND_SPEED_UNIT_KNOTS"
+        val url = ecowittUrl("history", appKey, apiKey, mac)
+            .addQueryParameter("start_date", dateFormat.format(startDate))
+            .addQueryParameter("end_date", dateFormat.format(endDate))
+            .addQueryParameter("cycle_type", "5min")
+            .build()
 
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
-            .header("X-Application-Key", appKey)
-            .header("X-API-Key", apiKey)
             .build()
 
         return try {
@@ -167,16 +165,9 @@ class EcowittDataFetcher(
      * Fetch real-time current wind data
      */
     private fun fetchRealtime(appKey: String, apiKey: String, mac: String): RealtimeResult? {
-        val url = "https://api.ecowitt.net/api/v3/device/real_time?" +
-                "mac=${URLEncoder.encode(mac, "UTF-8")}" +
-                "&call_back=wind" +
-                "&wind_speed_unitid=$WIND_SPEED_UNIT_KNOTS"
-
         val request = Request.Builder()
-            .url(url)
+            .url(ecowittUrl("real_time", appKey, apiKey, mac).build())
             .header("Accept", "application/json")
-            .header("X-Application-Key", appKey)
-            .header("X-API-Key", apiKey)
             .build()
 
         return try {
@@ -191,8 +182,36 @@ class EcowittDataFetcher(
         }
     }
 
+    /**
+     * Ecowitt v3 only accepts the keys as query parameters; as X-Application-Key / X-API-Key headers
+     * every call fails with 40010 "Invalid application Key". Never log these URLs.
+     */
+    internal fun ecowittUrl(endpoint: String, appKey: String, apiKey: String, mac: String): HttpUrl.Builder =
+        "https://api.ecowitt.net/api/v3/device/$endpoint".toHttpUrl().newBuilder()
+            .addQueryParameter("application_key", appKey)
+            .addQueryParameter("api_key", apiKey)
+            .addQueryParameter("mac", mac)
+            .addQueryParameter("call_back", "wind")
+            .addQueryParameter("wind_speed_unitid", WIND_SPEED_UNIT_KNOTS.toString())
+
+    /**
+     * Ecowitt answers errors with HTTP 200, a non-zero code and `"data": []` (an array, where success
+     * has an object). Returns false for those, logging code + msg, so they never reach Gson's object
+     * parsing as a JsonSyntaxException.
+     */
+    private fun isEcowittSuccess(json: String, endpoint: String): Boolean {
+        val root = JsonParser.parseString(json).asJsonObject
+        val code = root.get("code")?.asInt ?: -1
+        if (code != 0 || root.get("data")?.isJsonObject != true) {
+            System.err.println("Ecowitt $endpoint failed: code=$code msg=${root.get("msg")}")
+            return false
+        }
+        return true
+    }
+
     internal fun parseHistoryResponse(json: String): HistoryResult? {
         return try {
+            if (!isEcowittSuccess(json, "history")) return null
             val response = Gson().fromJson(json, EcowittHistoryResponse::class.java)
 
             if (response.code != 0 || response.data?.wind == null) {
@@ -237,6 +256,7 @@ class EcowittDataFetcher(
 
     internal fun parseRealtimeResponse(json: String): RealtimeResult? {
         return try {
+            if (!isEcowittSuccess(json, "real_time")) return null
             val response = Gson().fromJson(json, EcowittRealtimeResponse::class.java)
 
             if (response.code != 0 || response.data?.wind == null) {

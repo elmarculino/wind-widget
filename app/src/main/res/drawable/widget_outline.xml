@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget outline (Android 12+): the root clips to it; the fill comes from the bitmap. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
 
     <corners android:radius="16dp" />
-
-    <solid android:color="#E6101316" />
+    <solid android:color="@android:color/transparent" />
 
 </shape>

@@ -27,4 +27,16 @@ class WindDataTest {
         assertEquals("E", cardinal(450f))
         assertEquals("W", cardinal(-90f))
     }
+
+    @Test
+    fun `status text is just the time unless demo`() {
+        val millis = java.util.Calendar.getInstance().apply { set(2026, 9, 3, 19, 14) }.timeInMillis
+        fun status(s: WindDataStatus) =
+            WindData("x", emptyList(), emptyList(), emptyList(), emptyList(), dataStatus = s, lastUpdatedMillis = millis).statusText()
+
+        assertEquals("19:14", status(WindDataStatus.LIVE))
+        assertEquals("19:14", status(WindDataStatus.CACHED))
+        assertEquals("19:14", status(WindDataStatus.STALE))
+        assertEquals("Demo", status(WindDataStatus.DEMO))
+    }
 }

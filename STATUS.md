@@ -7,12 +7,14 @@ Code review done (findings in PROJECT.md › Definition of done). Bugs 1–4 are
 work (saved locations, UI). Modern chart now auto-fits like Clean; Modern/Clean have rendered picker
 previews. Design review P1 on `fix/widget-design-p1` (stacked on the review PR): Compact layout,
 Modern overlap/legend, amber offline badge, gust format, transparent corners (ARGB_8888),
-16-point compass, chart clipToOutline. 18 unit tests pass (previews assert corners + Compact fit).
+16-point compass, chart clipToOutline. `fix/ecowitt-auth-params` (stacked on P1): keys back as query
+params (headers broke every fetch), Modern status badge on the title row, status is just the time (amber when offline). 21 unit tests pass.
+Installed on Marco's S25 via USB: live data confirmed on the Modern widget.
 
 ## Blockers
 - Not tested on a device yet.
 
 ## Next
-1. Install the APK on the phone; test tap, resize and airplane mode (should show "Offline HH:MM", not demo).
+1. Install the APK on the phone; test tap, resize and airplane mode (should show the last time in amber, not demo).
 2. Review + merge the PR (3 commits: earlier UI work, review fixes, Modern line + previews).
 3. Fix bugs 5–8 (bug 6, plain-text keys, first); design P2 shared colour scale; P3 (UI language).

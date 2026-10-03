@@ -44,7 +44,7 @@ class WidgetPreviewGenerator {
 
     @Test
     fun `render modern preview`() {
-        save(WindModernRenderer(context).render(sampleData(), 1160, 600), "widget_preview_modern.png")
+        save(WindModernRenderer(context).render(sampleData(), 1160, 600, clipCorners = true), "widget_preview_modern.png")
     }
 
     @Test
@@ -55,15 +55,19 @@ class WidgetPreviewGenerator {
     @Test
     fun `render every style, normal and stress`() {
         File(outDir, "review").mkdirs()
-        for ((case, data) in listOf("normal" to sampleData(), "stress" to stressData())) {
+        for ((case, data) in listOf(
+            "normal" to sampleData(),
+            "stress" to stressData(),
+            "demo" to sampleData().copy(dataStatus = WindDataStatus.DEMO)
+        )) {
             // Pixel sizes ~ the providers' defaults (dp x 3). Chart clips its own corners here, as on
             // pre-Android 12 devices (on 12+ the layout's clipToOutline does it).
             val renders = mapOf(
                 "chart" to WindChartRenderer(context).render(data, 1080, 540, clipCorners = true),
-                "bar" to WindBarRenderer(context).render(data, 1080, 300),
-                "clean" to WindCleanRenderer(context).render(data, 1080, 540),
-                "compact" to WindCompactRenderer(context).render(data, 360, 360),
-                "modern" to WindModernRenderer(context).render(data, 1080, 540)
+                "bar" to WindBarRenderer(context).render(data, 1080, 300, clipCorners = true),
+                "clean" to WindCleanRenderer(context).render(data, 1080, 540, clipCorners = true),
+                "compact" to WindCompactRenderer(context).render(data, 360, 360, clipCorners = true),
+                "modern" to WindModernRenderer(context).render(data, 1080, 540, clipCorners = true)
             )
             renders.forEach { (style, bitmap) ->
                 save(bitmap, "review/${style}_$case.png")
@@ -78,9 +82,9 @@ class WidgetPreviewGenerator {
         // Portrait 4x2 cell: narrower and taller than the design size
         val data = stressData()
         assertCornersTransparent(WindChartRenderer(context).render(data, 750, 690, clipCorners = true), "chart portrait")
-        assertCornersTransparent(WindCleanRenderer(context).render(data, 750, 690), "clean portrait")
-        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690), "modern portrait")
-        assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420), "compact portrait")
+        assertCornersTransparent(WindCleanRenderer(context).render(data, 750, 690, clipCorners = true), "clean portrait")
+        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690, clipCorners = true), "modern portrait")
+        assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420, clipCorners = true), "compact portrait")
     }
 
     private fun assertCornersTransparent(bitmap: Bitmap, name: String) {

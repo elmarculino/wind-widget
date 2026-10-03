@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -23,10 +24,19 @@ class WindModernRenderer(private val context: Context) {
         private const val COLOR_CHART_FILL_TOP = 0x663B82F6.toInt()
         private const val COLOR_CHART_FILL_BOTTOM = 0x003B82F6.toInt()
 
-        private const val MAX_LOCATION_LENGTH = 24
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
+    /**
+     * [clipCorners]: draw the rounded card and its border into the bitmap. Only needed before
+     * Android 12; from 12 on, widget_wind_modern.xml clips to a 16dp outline and draws the border
+     * at the real on-screen size (corners baked into a fitXY-stretched bitmap grow with the widget).
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
         // ARGB_8888 so the area outside the rounded card stays transparent
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -34,7 +44,7 @@ class WindModernRenderer(private val context: Context) {
         val scale = height / 160f
 
         // Draw background
-        drawBackground(canvas, width, height, scale)
+        drawBackground(canvas, width, height, scale, clipCorners)
 
         val paddingH = 20f * scale
         val paddingV = 16f * scale
@@ -56,13 +66,18 @@ class WindModernRenderer(private val context: Context) {
         return bitmap
     }
 
-    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float) {
+    private fun drawBackground(canvas: Canvas, width: Int, height: Int, scale: Float, clipCorners: Boolean) {
         val paint = Paint().apply {
             color = COLOR_BG
             isAntiAlias = true
         }
-        val cornerRadius = 28f * scale
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), cornerRadius, cornerRadius, paint)
+        val bounds = RectF(0f, 0f, width.toFloat(), height.toFloat())
+        if (!clipCorners) {
+            canvas.drawRect(bounds, paint)  // the layout clips the corners and draws the border
+            return
+        }
+        val cornerRadius = 16f * scale  // ~the layout's 16dp at the default height
+        canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, paint)
 
         // Subtle border
         val borderPaint = Paint().apply {
@@ -71,7 +86,7 @@ class WindModernRenderer(private val context: Context) {
             strokeWidth = 1f * scale
             isAntiAlias = true
         }
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), cornerRadius, cornerRadius, borderPaint)
+        canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, borderPaint)
     }
 
     private fun drawHeader(canvas: Canvas, data: WindData, width: Int, paddingH: Float, paddingV: Float, scale: Float) {
@@ -83,23 +98,32 @@ class WindModernRenderer(private val context: Context) {
             isAntiAlias = true
         }
 
-        val locationName = if (data.locationName.length > MAX_LOCATION_LENGTH) {
-            data.locationName.take(MAX_LOCATION_LENGTH - 3) + "..."
-        } else {
-            data.locationName
-        }
-        canvas.drawText(locationName, paddingH, paddingV + 14f * scale, locationPaint)
-
-        // Update time
+        // Status, right-aligned on the title row ("UPDATED 15:16" / amber "DEMO DATA" pill)
         val timePaint = TextPaint().apply {
             color = COLOR_TEXT_MUTED
             textSize = 9f * scale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = 0.1f
+            textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
         val statusText = data.statusText().uppercase(java.util.Locale.getDefault())
-        StatusBadge.draw(canvas, data, statusText, paddingH, paddingV + 26f * scale, timePaint, scale)
+        val titleBaseline = paddingV + 14f * scale
+        StatusBadge.draw(canvas, data, statusText, width - paddingH, titleBaseline - 1f * scale, timePaint, scale)
+
+        // Location name takes whatever is left of the row
+        val pillPadding = if (StatusBadge.hasPill(data)) 12f * scale else 0f
+        val statusWidth = timePaint.measureText(statusText) + pillPadding
+        val titleWidth = width - 2 * paddingH - statusWidth - 12f * scale
+        canvas.drawText(fitText(data.locationName, locationPaint, titleWidth), paddingH, titleBaseline, locationPaint)
+    }
+
+    /** [text] as is when it fits in [maxWidth], otherwise cut and ended with "...". */
+    private fun fitText(text: String, paint: Paint, maxWidth: Float): String {
+        if (paint.measureText(text) <= maxWidth) return text
+        val ellipsis = "..."
+        val chars = paint.breakText(text, true, maxWidth - paint.measureText(ellipsis), null)
+        return text.take(chars).trimEnd() + ellipsis
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
