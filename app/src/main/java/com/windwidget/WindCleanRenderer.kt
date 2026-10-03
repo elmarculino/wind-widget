@@ -26,7 +26,8 @@ class WindCleanRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        // ARGB_8888 so the area outside the rounded card stays transparent
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         val scale = height / 140f
@@ -83,7 +84,7 @@ class WindCleanRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText(), width - paddingH, paddingV + 12f * scale, timePaint)
+        StatusBadge.draw(canvas, data, data.statusText(), width - paddingH, paddingV + 12f * scale, timePaint, scale)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
@@ -133,7 +134,7 @@ class WindCleanRenderer(private val context: Context) {
             textSize = 11f * scale
             isAntiAlias = true
         }
-        val gustText = "gust ${data.currentGust.roundToInt()} kts"
+        val gustText = "gust %.1f kts".format(data.currentGust)
         canvas.drawText(gustText, paddingH + infoPaint.measureText(dirText) + 12f * scale, top + 46f * scale, gustPaint)
     }
 

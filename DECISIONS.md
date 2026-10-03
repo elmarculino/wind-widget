@@ -1,6 +1,31 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-03 — Chart widget corners come from clipToOutline, not the bitmap
+**Context:** Review of PR #2: the bitmap is rendered at max width x max height and stretched (fitXY)
+into the real cell, whose aspect differs between portrait and landscape. A radius baked into the
+bitmap can't match the 16dp background in both, so opaque pixels showed in the corners.
+**Decision:** `widget_wind.xml` sets `clipToOutline` on the root, clipping to `widget_background` at
+its on-screen size (Android 12+). `WindChartRenderer` only clears its own corners below Android 12.
+**Consequences:** Exact corners on 12+; an approximation on 8–11. Rendering at the real cell size
+per orientation would fix the stretch itself (text too); not done yet.
+
+## 2026-10-03 — Widget bitmaps use ARGB_8888
+**Context:** RGB_565 has no alpha, so the area outside each rounded card came out opaque black and the
+translucent card colours were drawn solid.
+**Decision:** All 5 renderers create ARGB_8888 bitmaps. Chart fills its full rect, so it clears the
+corners outside a 16dp round rect (matching `widget_background`).
+**Consequences:** Twice the bitmap memory per widget. Rendering at 1x density (backlog) would offset it
+if RemoteViews size limits are ever hit.
+
+## 2026-10-03 — Stale and demo data get an amber status badge on every widget
+**Context:** "Offline 15:16" was drawn in the same small grey text as "Updated 15:16", so an old
+reading looked live at a glance.
+**Decision:** `StatusBadge.draw` renders the status line for all 5 styles; STALE and DEMO are bold amber
+inside an amber pill. LIVE and CACHED keep the plain style (CACHED is a recent real reading).
+**Consequences:** One place to change status styling. The numbers themselves are not dimmed; if that
+turns out not to be enough on the phone, dim them next.
+
 ## 2026-10-03 — Modern chart auto-fits its Y axis; picker previews rendered from the real renderers
 **Context:** Modern used a fixed 0–20 kt axis, so a typical 11–14 kt window filled ~15% of the height and
 looked like a flat line next to Clean (which fits min..max of the 3h window). Modern and Clean pointed

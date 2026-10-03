@@ -22,21 +22,18 @@ data class WindData(
     val maxSpeed: Float get() = speeds.maxOrNull() ?: 0f
     val maxGust: Float get() = gusts.maxOrNull() ?: 0f
 
+    /** 16-point compass (22.5° sectors centred on each point), e.g. 74° -> "ENE". */
     val directionCardinal: String get() {
-        val dir = currentDirection
-        return when {
-            dir < 22.5 || dir >= 337.5 -> "N"
-            dir < 67.5 -> "NE"
-            dir < 112.5 -> "E"
-            dir < 157.5 -> "SE"
-            dir < 202.5 -> "S"
-            dir < 247.5 -> "SW"
-            dir < 292.5 -> "W"
-            else -> "NW"
-        }
+        val normalized = ((currentDirection % 360f) + 360f) % 360f
+        return CARDINALS[((normalized + 11.25f) / 22.5f).toInt() % 16]
     }
 
     companion object {
+        private val CARDINALS = arrayOf(
+            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+        )
+
         fun knotsToBeaufort(knots: Float): Int = when {
             knots < 1 -> 0
             knots < 4 -> 1

@@ -1,11 +1,10 @@
 package com.windwidget
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
+import android.graphics.Color
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +17,9 @@ import java.util.Locale
 
 /**
  * Renders widget previews with the real renderers (Robolectric native graphics).
- * Output: app/build/widget-previews/. Copy into res/drawable-nodpi/ when a renderer changes.
+ * Output: app/build/widget-previews/. Copy the widget_preview_*.png files into res/drawable-nodpi/
+ * when a renderer changes. review/ holds every style in a normal and a stress case (offline,
+ * strong gusty wind, long name, shifting direction) for eyeballing layout problems.
  * Doubles as a smoke test that the renderers draw without crashing.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -30,6 +31,10 @@ class WidgetPreviewGenerator {
     private val outDir = File("build/widget-previews").apply { mkdirs() }
     private val originalLocale = Locale.getDefault()
 
+    private companion object {
+        const val COMPACT_BG = 0xCC3A3D42.toInt()  // WindCompactRenderer.COLOR_BG
+    }
+
     // Previews show what the phone shows (decimal comma)
     @Before
     fun setLocale() = Locale.setDefault(Locale("pt", "BR"))
@@ -39,18 +44,80 @@ class WidgetPreviewGenerator {
 
     @Test
     fun `render modern preview`() {
-        // Modern: scale = height / 160, corner radius 28 * scale
-        val height = 600
-        val bitmap = WindModernRenderer(context).render(sampleData(), 1160, height)
-        save(roundCorners(bitmap, 28f * height / 160f), "widget_preview_modern.png")
+        save(WindModernRenderer(context).render(sampleData(), 1160, 600), "widget_preview_modern.png")
     }
 
     @Test
     fun `render clean preview`() {
-        // Clean: scale = height / 140, corner radius 20 * scale
-        val height = 600
-        val bitmap = WindCleanRenderer(context).render(sampleData(), 1160, height)
-        save(roundCorners(bitmap, 20f * height / 140f), "widget_preview_clean.png")
+        save(WindCleanRenderer(context).render(sampleData(), 1160, 600), "widget_preview_clean.png")
+    }
+
+    @Test
+    fun `render every style, normal and stress`() {
+        File(outDir, "review").mkdirs()
+        for ((case, data) in listOf("normal" to sampleData(), "stress" to stressData())) {
+            // Pixel sizes ~ the providers' defaults (dp x 3). Chart clips its own corners here, as on
+            // pre-Android 12 devices (on 12+ the layout's clipToOutline does it).
+            val renders = mapOf(
+                "chart" to WindChartRenderer(context).render(data, 1080, 540, clipCorners = true),
+                "bar" to WindBarRenderer(context).render(data, 1080, 300),
+                "clean" to WindCleanRenderer(context).render(data, 1080, 540),
+                "compact" to WindCompactRenderer(context).render(data, 360, 360),
+                "modern" to WindModernRenderer(context).render(data, 1080, 540)
+            )
+            renders.forEach { (style, bitmap) ->
+                save(bitmap, "review/${style}_$case.png")
+                assertCornersTransparent(bitmap, "${style}_$case")
+            }
+            assertBottomEdgeEmpty(renders.getValue("compact"), COMPACT_BG, "compact_$case")
+        }
+    }
+
+    @Test
+    fun `corners stay transparent at a portrait aspect`() {
+        // Portrait 4x2 cell: narrower and taller than the design size
+        val data = stressData()
+        assertCornersTransparent(WindChartRenderer(context).render(data, 750, 690, clipCorners = true), "chart portrait")
+        assertCornersTransparent(WindCleanRenderer(context).render(data, 750, 690), "clean portrait")
+        assertCornersTransparent(WindModernRenderer(context).render(data, 750, 690), "modern portrait")
+        assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420), "compact portrait")
+    }
+
+    private fun assertCornersTransparent(bitmap: Bitmap, name: String) {
+        val w = bitmap.width - 1
+        val h = bitmap.height - 1
+        for ((x, y) in listOf(0 to 0, w to 0, 0 to h, w to h)) {
+            assertEquals("$name: alpha at corner ($x,$y)", 0, Color.alpha(bitmap.getPixel(x, y)))
+        }
+    }
+
+    /** Text pushed past the bottom (the old Compact gust line) leaves non-background pixels in the last 3%. */
+    private fun assertBottomEdgeEmpty(bitmap: Bitmap, background: Int, name: String) {
+        val band = (bitmap.height * 0.97f).toInt() until bitmap.height
+        val inner = (bitmap.width * 0.2f).toInt() until (bitmap.width * 0.8f).toInt()  // skip rounded corners
+        for (y in band) for (x in inner) {
+            val p = bitmap.getPixel(x, y)
+            // ±2 per channel: translucent colours round-trip through premultiplied alpha
+            val same = listOf(24, 16, 8, 0).all { shift ->
+                kotlin.math.abs((p ushr shift and 0xFF) - (background ushr shift and 0xFF)) <= 2
+            }
+            assertTrue("$name: content at ($x,$y): ${Integer.toHexString(p)}", same)
+        }
+    }
+
+    /** Offline, 30 kt and rising with strong gusts peaking at the right edge, long name, veering wind. */
+    private fun stressData(): WindData {
+        val speeds = (0 until 36).map { 14f + it * 0.45f + if (it % 3 == 0) 3f else 0f }
+        return sampleData().copy(
+            locationName = "Praia do Patacho - Porto de Pedras, Alagoas (estação 2)",
+            speeds = speeds,
+            directions = speeds.indices.map { (it * 10f) % 360 },
+            gusts = speeds.map { it * 1.6f },
+            currentSpeed = speeds.last(),
+            currentDirection = 300f,  // WNW: longest 16-point label
+            currentGust = speeds.last() * 1.6f,
+            dataStatus = WindDataStatus.STALE
+        )
     }
 
     /** Deterministic 3h series shaped like a real afternoon at the MiCasa station. */
@@ -76,18 +143,6 @@ class WidgetPreviewGenerator {
             dataStatus = WindDataStatus.LIVE,
             lastUpdatedMillis = 1791051360000L
         )
-    }
-
-    /** Renderers draw on RGB_565 (no alpha): make the area outside the rounded card transparent. */
-    private fun roundCorners(src: Bitmap, radius: Float): Bitmap {
-        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(out)
-        val clip = Path().apply {
-            addRoundRect(RectF(0f, 0f, src.width.toFloat(), src.height.toFloat()), radius, radius, Path.Direction.CW)
-        }
-        canvas.clipPath(clip)
-        canvas.drawBitmap(src, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-        return out
     }
 
     private fun save(bitmap: Bitmap, name: String) {

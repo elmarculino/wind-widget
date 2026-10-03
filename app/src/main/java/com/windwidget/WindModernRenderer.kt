@@ -27,7 +27,8 @@ class WindModernRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        // ARGB_8888 so the area outside the rounded card stays transparent
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         val scale = height / 160f
@@ -97,7 +98,8 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.1f
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText().uppercase(java.util.Locale.getDefault()), paddingH, paddingV + 26f * scale, timePaint)
+        val statusText = data.statusText().uppercase(java.util.Locale.getDefault())
+        StatusBadge.draw(canvas, data, statusText, paddingH, paddingV + 26f * scale, timePaint, scale)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
@@ -128,7 +130,7 @@ class WindModernRenderer(private val context: Context) {
         // Direction arrow circle with glow
         val circleRadius = 22f * scale
         val circleX = rightX - circleRadius
-        val circleY = top + 18f * scale
+        val circleY = top + 4f * scale  // high enough that the chart peak (85% of chart height) stays clear
 
         // Glow effect
         val glowPaint = Paint().apply {
@@ -166,7 +168,7 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.15f
             isAntiAlias = true
         }
-        canvas.drawText("DIREÇÃO", circleX - circleRadius - 8f * scale, top + 10f * scale, dirLabelPaint)
+        canvas.drawText("DIREÇÃO", circleX - circleRadius - 8f * scale, top - 3f * scale, dirLabelPaint)
 
         // Direction value
         val dirValuePaint = TextPaint().apply {
@@ -176,7 +178,7 @@ class WindModernRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText("${data.directionCardinal} (${data.currentDirection.roundToInt()}°)", circleX - circleRadius - 8f * scale, top + 24f * scale, dirValuePaint)
+        canvas.drawText("${data.directionCardinal} (${data.currentDirection.roundToInt()}°)", circleX - circleRadius - 8f * scale, top + 11f * scale, dirValuePaint)
     }
 
     private fun drawDirectionArrow(canvas: Canvas, cx: Float, cy: Float, direction: Float, size: Float, scale: Float) {
@@ -292,21 +294,18 @@ class WindModernRenderer(private val context: Context) {
 
         // Max speed (Velocidade máxima)
         var x = paddingH
-        dotPaint.color = COLOR_ACCENT_GLOW
+        dotPaint.color = COLOR_ACCENT_LIGHT
         canvas.drawCircle(x + dotRadius, y, dotRadius, dotPaint)
         x += dotRadius * 2 + 4f * scale
         canvas.drawText("VEL:", x, y + 3f * scale, labelPaint)
         x += labelPaint.measureText("VEL:") + 2f * scale
         canvas.drawText("${data.maxSpeed.roundToInt()} max", x, y + 3f * scale, valuePaint)
 
-        // Current gust (Rajada atual)
+        // Current gust (Rajada atual) - not drawn on the chart, so no legend dot
         x += valuePaint.measureText("${data.maxSpeed.roundToInt()} max") + 16f * scale
-        dotPaint.color = COLOR_ACCENT
-        canvas.drawCircle(x + dotRadius, y, dotRadius, dotPaint)
-        x += dotRadius * 2 + 4f * scale
         canvas.drawText("RAJADA:", x, y + 3f * scale, labelPaint)
         x += labelPaint.measureText("RAJADA:") + 2f * scale
-        canvas.drawText("${data.currentGust.roundToInt()}", x, y + 3f * scale, valuePaint)
+        canvas.drawText("%.1f".format(data.currentGust), x, y + 3f * scale, valuePaint)
 
         // Time range (right side)
         val timeRangePaint = TextPaint().apply {

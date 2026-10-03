@@ -1,6 +1,7 @@
 package com.windwidget
 
 import android.content.Context
+import android.os.Build
 import android.graphics.*
 import android.text.TextPaint
 import kotlin.math.roundToInt
@@ -28,8 +29,20 @@ class WindChartRenderer(private val context: Context) {
         private const val MAX_LOCATION_LENGTH = 35
     }
 
-    fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+    /**
+     * [clipCorners]: punch the rounded corners into the bitmap. Only needed before Android 12; from
+     * Android 12 on, widget_wind.xml clips to its 16dp background via clipToOutline at the real
+     * on-screen size. The bitmap is stretched (fitXY) into a cell whose aspect differs between
+     * portrait and landscape, so corners baked into it can only approximate 16dp.
+     */
+    fun render(
+        data: WindData,
+        width: Int,
+        height: Int,
+        clipCorners: Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    ): Bitmap {
+        // ARGB_8888 so the area outside the rounded card stays transparent
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         val scale = height / 180f
@@ -58,6 +71,7 @@ class WindChartRenderer(private val context: Context) {
         drawDirectionArrows(canvas, data, chartLeft, chartTop, chartWidth, chartHeight, scale)
         drawTimeAxis(canvas, data, chartLeft, chartBottom, chartWidth, scale)
         drawBottomBar(canvas, data, width, height, bottomBarHeight, scale)
+        if (clipCorners) clearCorners(canvas, width, height, 16f * scale)  // ~widget_background's 16dp
 
         return bitmap
     }
@@ -69,6 +83,19 @@ class WindChartRenderer(private val context: Context) {
             Shader.TileMode.CLAMP
         )
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), Paint().apply { shader = gradient })
+    }
+
+    /** The chart fills the whole bitmap edge to edge; cut it to the container's rounded shape. */
+    private fun clearCorners(canvas: Canvas, width: Int, height: Int, radius: Float) {
+        val outside = Path().apply {
+            addRect(0f, 0f, width.toFloat(), height.toFloat(), Path.Direction.CW)
+            op(Path().apply {
+                addRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, Path.Direction.CW)
+            }, Path.Op.DIFFERENCE)
+        }
+        canvas.drawPath(outside, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+        })
     }
 
     private fun drawHeader(canvas: Canvas, data: WindData, width: Int, scale: Float) {
@@ -94,7 +121,7 @@ class WindChartRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        canvas.drawText(data.statusText(), width - 10f * scale, 24f * scale, timePaint)
+        StatusBadge.draw(canvas, data, data.statusText(), width - 10f * scale, 24f * scale, timePaint, scale)
     }
 
     private fun calculateMaxY(data: WindData): Float {
@@ -281,8 +308,13 @@ class WindChartRenderer(private val context: Context) {
         val smallTextY = barTop + barHeight / 2 + 3f * scale
 
         // Blue box: Direction with arrow
-        drawMiniArrow(canvas, sectionWidth / 2 - 26f * scale, barTop + barHeight / 2, data.currentDirection, scale)
-        canvas.drawText("${data.directionCardinal} ${data.currentDirection.roundToInt()}°", sectionWidth / 2 + 6f * scale, textY, textPaint)
+        // Arrow + label centred as one group, so 3-letter labels like "WNW" don't collide with the arrow
+        val dirText = "${data.directionCardinal} ${data.currentDirection.roundToInt()}°"
+        val arrowSpan = 20f * scale
+        val dirTextWidth = textPaint.measureText(dirText)
+        val dirLeft = sectionWidth / 2 - (arrowSpan + dirTextWidth) / 2
+        drawMiniArrow(canvas, dirLeft + arrowSpan / 2 - 3f * scale, barTop + barHeight / 2, data.currentDirection, scale)
+        canvas.drawText(dirText, dirLeft + arrowSpan + dirTextWidth / 2, textY, textPaint)
 
         // Green box: Wind speed + max
         val speedText = "%.1f".format(data.currentSpeed)
