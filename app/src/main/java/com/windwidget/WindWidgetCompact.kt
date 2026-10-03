@@ -3,16 +3,13 @@ package com.windwidget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Compact 2x2 Wind Widget Provider
@@ -24,25 +21,11 @@ class WindWidgetCompact : AppWidgetProvider() {
         private const val ACTION_REFRESH = "com.windwidget.ACTION_REFRESH_COMPACT"
         private const val DEFAULT_SIZE_DP = 120
 
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-        fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-            scope.launch {
-                updateWidgetAsync(context, appWidgetManager, appWidgetId)
-            }
-        }
-
-        fun updateAllWidgets(context: Context) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, WindWidgetCompact::class.java)
-            val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            widgetIds.forEach { updateWidget(context, appWidgetManager, it) }
-        }
-
-        private suspend fun updateWidgetAsync(
+        suspend fun updateWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
-            appWidgetId: Int
+            appWidgetId: Int,
+            forceRefresh: Boolean = false
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_wind_compact)
 
@@ -50,14 +33,16 @@ class WindWidgetCompact : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
             try {
-                val fetcher = EcowittDataFetcher(context)
-                val windData = fetcher.fetch() ?: fetcher.generateDemoData()
+                val fetcher = EcowittDataFetcher(context, appWidgetId)
+                val windData = fetcher.fetch(forceRefresh) ?: fetcher.generateDemoData()
 
                 val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
                 val (widthPx, heightPx) = getWidgetSizeInPixels(context, options)
 
                 val renderer = WindCompactRenderer(context)
-                val bitmap = renderer.render(windData, widthPx, heightPx)
+                val bitmap = withContext(Dispatchers.Default) {
+                    renderer.render(windData, widthPx, heightPx)
+                }
 
                 views.setImageViewBitmap(R.id.windChart, bitmap)
                 views.setViewVisibility(R.id.loadingIndicator, View.GONE)
@@ -99,15 +84,13 @@ class WindWidgetCompact : AppWidgetProvider() {
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        for (appWidgetId in appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId)
-        }
+        WindUpdateScheduler.enqueueUpdate(context, appWidgetIds)
     }
 
     override fun onAppWidgetOptionsChanged(
         context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle
     ) {
-        updateWidget(context, appWidgetManager, appWidgetId)
+        WindUpdateScheduler.enqueueUpdate(context, intArrayOf(appWidgetId))
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -117,7 +100,7 @@ class WindWidgetCompact : AppWidgetProvider() {
                 AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
             )
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                updateWidget(context, AppWidgetManager.getInstance(context), appWidgetId)
+                WindUpdateScheduler.enqueueUpdate(context, intArrayOf(appWidgetId), forceRefresh = true)
             }
         }
     }
@@ -127,6 +110,6 @@ class WindWidgetCompact : AppWidgetProvider() {
     }
 
     override fun onDisabled(context: Context) {
-        // Don't cancel updates - other widgets might still be active
+        WindUpdateScheduler.cancelUpdatesIfNoWidgets(context)
     }
 }

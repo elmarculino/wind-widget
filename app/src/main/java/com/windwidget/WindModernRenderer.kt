@@ -27,7 +27,7 @@ class WindModernRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         val scale = height / 160f
@@ -97,9 +97,7 @@ class WindModernRenderer(private val context: Context) {
             letterSpacing = 0.1f
             isAntiAlias = true
         }
-        val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        canvas.drawText("ATUALIZADO $currentTime", paddingH, paddingV + 26f * scale, timePaint)
+        canvas.drawText(data.statusText().uppercase(java.util.Locale.getDefault()), paddingH, paddingV + 26f * scale, timePaint)
     }
 
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
@@ -211,10 +209,10 @@ class WindModernRenderer(private val context: Context) {
         val chartWidth = right - left
         val chartHeight = bottom - top
 
-        // Fixed Y axis: 0 to 20 knots
-        val minSpeed = 0f
-        val maxSpeed = 20f
-        val range = maxSpeed - minSpeed
+        // Y axis fitted to the 3h window (same as Clean) so small variations stay visible
+        val maxSpeed = (data.speeds.maxOrNull() ?: 1f).coerceAtLeast(1f)
+        val minSpeed = (data.speeds.minOrNull() ?: 0f).coerceAtMost(maxSpeed - 1f)
+        val range = (maxSpeed - minSpeed).coerceAtLeast(1f)
 
         val linePath = Path()
         val fillPath = Path()
@@ -223,7 +221,7 @@ class WindModernRenderer(private val context: Context) {
         data.speeds.forEachIndexed { i, speed ->
             val x = left + (chartWidth * i / (data.speeds.size - 1))
             val normalizedSpeed = (speed - minSpeed) / range
-            val y = bottom - (chartHeight * normalizedSpeed)
+            val y = bottom - (chartHeight * normalizedSpeed * 0.85f)
             points.add(PointF(x, y))
         }
 

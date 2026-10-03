@@ -36,7 +36,7 @@ class WindBarRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         // Calculate scale factor based on actual size
@@ -97,9 +97,7 @@ class WindBarRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        val timeStr = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        canvas.drawText(timeStr, width - paddingH, paddingV + 14f * scale, timePaint)
+        canvas.drawText(data.statusText(), width - paddingH, paddingV + 14f * scale, timePaint)
     }
 
     private fun drawCurrentWind(canvas: Canvas, data: WindData, left: Float, top: Float, bottom: Float, scale: Float) {

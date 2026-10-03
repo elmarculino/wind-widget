@@ -29,7 +29,7 @@ class WindChartRenderer(private val context: Context) {
     }
 
     fun render(data: WindData, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         val canvas = Canvas(bitmap)
 
         val scale = height / 180f
@@ -94,9 +94,7 @@ class WindChartRenderer(private val context: Context) {
             textAlign = Paint.Align.RIGHT
             isAntiAlias = true
         }
-        val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        canvas.drawText(currentTime, width - 10f * scale, 24f * scale, timePaint)
+        canvas.drawText(data.statusText(), width - 10f * scale, 24f * scale, timePaint)
     }
 
     private fun calculateMaxY(data: WindData): Float {

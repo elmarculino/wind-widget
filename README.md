@@ -57,6 +57,23 @@ cd wind-widget
 # APK location: app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### Local setup (macOS Homebrew)
+
+```bash
+brew install openjdk@17
+brew install android-commandlinetools
+
+yes | env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  /opt/homebrew/bin/sdkmanager --sdk_root=/opt/homebrew/share/android-commandlinetools \
+  "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+cat <<'EOF' > local.properties
+sdk.dir=/opt/homebrew/share/android-commandlinetools
+EOF
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleDebug
+```
+
 ## Configuration
 
 ### Getting Ecowitt API Credentials
