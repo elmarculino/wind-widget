@@ -10,10 +10,16 @@ import io.mockk.unmockkAll
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 
 class EcowittDataFetcherTest {
 
@@ -146,6 +152,83 @@ class EcowittDataFetcherTest {
         assertEquals("mac123", creds.macAddress)
         assertEquals("My Place", creds.locationName)
     }
+
+    @Test
+    fun `api failure keeps last real reading as stale and never caches demo data`() = runBlocking {
+        val fetcher = EcowittDataFetcher(context, client = stubClient(code = 500, body = ""))
+        fetcher.saveCredentials("appKey", "apiKey", "mac123", "My Place")
+        val real = realReading()
+        prefs.edit()
+            .putString("cached_wind_data", Gson().toJson(real))
+            .putLong("cache_time", System.currentTimeMillis() - 10 * 60 * 1000L)
+            .apply()
+
+        val result = fetcher.fetch()
+
+        assertEquals(WindDataStatus.STALE, result!!.dataStatus)
+        assertEquals(real.speeds, result.speeds)
+        assertEquals(Gson().toJson(real), prefs.getString("cached_wind_data", null))
+    }
+
+    @Test
+    fun `api error code without cache returns uncached demo data`() = runBlocking {
+        val fetcher = EcowittDataFetcher(
+            context,
+            client = stubClient(code = 200, body = """{"code":40010,"msg":"Illegal Application_Key Parameter","data":[]}""")
+        )
+        fetcher.saveCredentials("appKey", "apiKey", "mac123", "My Place")
+
+        val result = fetcher.fetch(forceRefresh = true)
+
+        assertEquals(WindDataStatus.DEMO, result!!.dataStatus)
+        assertNull(prefs.getString("cached_wind_data", null))
+    }
+
+    @Test
+    fun `missing credentials returns demo data without caching it`() = runBlocking {
+        val fetcher = EcowittDataFetcher(context)
+
+        val result = fetcher.fetch()
+
+        assertEquals(WindDataStatus.DEMO, result!!.dataStatus)
+        assertFalse(prefs.contains("cached_wind_data"))
+    }
+
+    @Test
+    fun `saving credentials invalidates cached reading`() {
+        val fetcher = EcowittDataFetcher(context)
+        prefs.edit()
+            .putString("cached_wind_data", Gson().toJson(realReading()))
+            .putLong("cache_time", System.currentTimeMillis())
+            .apply()
+
+        fetcher.saveCredentials("appKey", "apiKey", "otherMac", "Other Place")
+
+        assertFalse(prefs.contains("cached_wind_data"))
+        assertFalse(prefs.contains("cache_time"))
+    }
+
+    private fun realReading() = WindData(
+        locationName = "Real",
+        times = listOf("2024-01-01T00:00", "2024-01-01T00:05"),
+        speeds = listOf(18f, 19f),
+        directions = listOf(90f, 95f),
+        gusts = listOf(22f, 24f),
+        dataStatus = WindDataStatus.LIVE,
+        lastUpdatedMillis = System.currentTimeMillis() - 10 * 60 * 1000L
+    )
+
+    private fun stubClient(code: Int, body: String): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            Response.Builder()
+                .request(chain.request())
+                .protocol(Protocol.HTTP_1_1)
+                .code(code)
+                .message("stub")
+                .body(body.toResponseBody())
+                .build()
+        }
+        .build()
 
     private class FakeSharedPreferences : SharedPreferences {
         private val data = mutableMapOf<String, Any?>()

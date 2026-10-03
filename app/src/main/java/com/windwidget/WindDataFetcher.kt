@@ -9,6 +9,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
@@ -21,7 +22,8 @@ import java.util.concurrent.TimeUnit
  */
 class EcowittDataFetcher(
     private val context: Context,
-    private val appWidgetId: Int? = null
+    private val appWidgetId: Int? = null,
+    private val client: OkHttpClient = defaultClient
 ) {
 
     companion object {
@@ -42,13 +44,16 @@ class EcowittDataFetcher(
 
         // Default location name
         private const val DEFAULT_LOCATION = "São Miguel dos Milagres - Alagoas, MiCasa"
-    }
 
-    private val client = OkHttpClient.Builder()
-        .addInterceptor(RetryInterceptor())
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+        // Shared across fetcher instances so widgets reuse one connection pool
+        private val defaultClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .addInterceptor(RetryInterceptor())
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
+        }
+    }
 
     private val prefs: SharedPreferences by lazy {
         SecurePrefs.get(context, PREFS_NAME)
@@ -71,30 +76,32 @@ class EcowittDataFetcher(
             getCachedData(status = WindDataStatus.CACHED)?.let { return it }
         }
 
+        // No credentials configured: demo data, never cached
+        val credentials = getCredentials() ?: return generateDemoData()
+
         return withContext(Dispatchers.IO) {
             try {
-                fetchFromEcowitt()?.also { data ->
+                fetchFromEcowitt(credentials).also { data ->
                     cacheData(data)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Return cached data even if stale on error
+                // Keep showing the last real reading (marked stale); demo data only
+                // when there has never been a successful fetch
                 getCachedData(ignoreExpiry = true, status = WindDataStatus.STALE) ?: generateDemoData()
             }
         }
     }
 
-    private suspend fun fetchFromEcowitt(): WindData? = withContext(Dispatchers.IO) {
-        val credentials = getCredentials()
-        val appKey = credentials?.applicationKey
-        val apiKey = credentials?.apiKey
-        val mac = credentials?.macAddress
-        val locationName = credentials?.locationName ?: DEFAULT_LOCATION
-
-        if (appKey.isNullOrEmpty() || apiKey.isNullOrEmpty() || mac.isNullOrEmpty()) {
-            // No credentials configured, return demo data
-            return@withContext generateDemoData()
-        }
+    /**
+     * Fetch live data. Throws when the history request fails so callers fall
+     * back to the stale cache instead of caching demo data as live.
+     */
+    private suspend fun fetchFromEcowitt(credentials: Credentials): WindData = withContext(Dispatchers.IO) {
+        val appKey = credentials.applicationKey
+        val apiKey = credentials.apiKey
+        val mac = credentials.macAddress
+        val locationName = credentials.locationName
 
         // Fetch both history and real-time data in parallel
         val historyDeferred = async { fetchHistory(appKey, apiKey, mac) }
@@ -103,9 +110,8 @@ class EcowittDataFetcher(
         val historyData = historyDeferred.await()
         val realtimeData = realtimeDeferred.await()
 
-        // If we have no history, fall back to demo
         if (historyData == null) {
-            return@withContext generateDemoData()
+            throw IOException("Ecowitt history unavailable")
         }
 
         // Combine history with real-time current values
@@ -292,6 +298,9 @@ class EcowittDataFetcher(
             .putString(widgetKey(KEY_API_KEY), apiKey)
             .putString(widgetKey(KEY_MAC_ADDRESS), macAddress)
             .putString(widgetKey(KEY_LOCATION_NAME), locationName)
+            // Credentials changed: drop the reading cached for the old station
+            .remove(widgetKey(KEY_CACHED_DATA))
+            .remove(widgetKey(KEY_CACHE_TIME))
             .apply()
     }
 

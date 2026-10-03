@@ -3,16 +3,12 @@ package com.windwidget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -33,34 +29,11 @@ class WindWidgetHorizontal : AppWidgetProvider() {
         private const val DEFAULT_WIDTH_DP = 360
         private const val DEFAULT_HEIGHT_DP = 100
 
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-        /**
-         * Update a single widget instance
-         */
-        fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-            scope.launch {
-                updateWidgetAsync(context, appWidgetManager, appWidgetId)
-            }
-        }
-
-        /**
-         * Update all horizontal widget instances
-         */
-        fun updateAllWidgets(context: Context) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, WindWidgetHorizontal::class.java)
-            val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
-
-            widgetIds.forEach { widgetId ->
-                updateWidget(context, appWidgetManager, widgetId)
-            }
-        }
-
-        private suspend fun updateWidgetAsync(
+        suspend fun updateWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
-            appWidgetId: Int
+            appWidgetId: Int,
+            forceRefresh: Boolean = false
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_wind_horizontal)
 
@@ -71,7 +44,7 @@ class WindWidgetHorizontal : AppWidgetProvider() {
             try {
                 // Fetch wind data from Ecowitt
                 val fetcher = EcowittDataFetcher(context, appWidgetId)
-                val windData = fetcher.fetch() ?: fetcher.generateDemoData()
+                val windData = fetcher.fetch(forceRefresh) ?: fetcher.generateDemoData()
 
                 // Get actual widget size
                 val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
@@ -138,9 +111,7 @@ class WindWidgetHorizontal : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        for (appWidgetId in appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId)
-        }
+        WindUpdateScheduler.enqueueUpdate(context, appWidgetIds)
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -150,7 +121,7 @@ class WindWidgetHorizontal : AppWidgetProvider() {
         newOptions: Bundle
     ) {
         // Re-render when widget is resized
-        updateWidget(context, appWidgetManager, appWidgetId)
+        WindUpdateScheduler.enqueueUpdate(context, intArrayOf(appWidgetId))
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -163,8 +134,7 @@ class WindWidgetHorizontal : AppWidgetProvider() {
                     AppWidgetManager.INVALID_APPWIDGET_ID
                 )
                 if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    val appWidgetManager = AppWidgetManager.getInstance(context)
-                    updateWidget(context, appWidgetManager, appWidgetId)
+                    WindUpdateScheduler.enqueueUpdate(context, intArrayOf(appWidgetId), forceRefresh = true)
                 }
             }
         }

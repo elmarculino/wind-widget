@@ -169,18 +169,8 @@ class WindWidgetConfigureActivity : AppCompatActivity() {
         // Save credentials
         fetcher.saveCredentials(appKey, apiKey, macAddress, locationName)
 
-        // Update the widget - determine which type based on the provider class
-        val appWidgetManager = AppWidgetManager.getInstance(this)
-        val providerInfo = appWidgetManager.getAppWidgetInfo(appWidgetId)
-        val providerClassName = providerInfo?.provider?.className
-
-        when (providerClassName) {
-            "com.windwidget.WindWidgetModern" -> WindWidgetModern.updateWidget(this, appWidgetManager, appWidgetId)
-            "com.windwidget.WindWidgetClean" -> WindWidgetClean.updateWidget(this, appWidgetManager, appWidgetId)
-            "com.windwidget.WindWidgetCompact" -> WindWidgetCompact.updateWidget(this, appWidgetManager, appWidgetId)
-            "com.windwidget.WindWidgetHorizontal" -> WindWidgetHorizontal.updateWidget(this, appWidgetManager, appWidgetId)
-            else -> WindWidget.updateWidget(this, appWidgetManager, appWidgetId)
-        }
+        // Fetch fresh data for the new credentials (bypass any cached reading)
+        WindUpdateScheduler.enqueueUpdate(this, intArrayOf(appWidgetId), forceRefresh = true)
 
         // Schedule periodic updates
         WindUpdateScheduler.scheduleUpdates(this)
