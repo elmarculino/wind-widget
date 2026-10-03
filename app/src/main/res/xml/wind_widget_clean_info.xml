@@ -12,7 +12,6 @@
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_wind_clean"
-    android:previewImage="@drawable/widget_preview"
-    android:previewLayout="@layout/widget_wind_clean"
+    android:previewImage="@drawable/widget_preview_clean"
     android:description="@string/widget_clean_description"
     android:configure="com.windwidget.WindWidgetConfigureActivity" />
