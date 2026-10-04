@@ -16,6 +16,7 @@ data class WindData(
     val currentSpeed: Float = speeds.lastOrNull() ?: 0f,
     val currentDirection: Float = directions.lastOrNull() ?: 0f,
     val currentGust: Float = gusts.lastOrNull() ?: 0f,
+    val temperatureC: Float? = null,  // Not every source reports it (Windguru does)
     val dataStatus: WindDataStatus = WindDataStatus.LIVE,
     val lastUpdatedMillis: Long = System.currentTimeMillis()
 ) {
