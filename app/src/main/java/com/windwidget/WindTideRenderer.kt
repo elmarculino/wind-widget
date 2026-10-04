@@ -24,7 +24,8 @@ class WindTideRenderer(private val context: Context) {
         private const val COLOR_TEXT_VARIANT = 0xFFC1C7D3.toInt() // --on-surface-variant
         private const val COLOR_LABEL = 0xFF8B919D.toInt()       // --outline
         private const val COLOR_DIVIDER = 0x4D414751             // --outline-variant, 30%
-        private const val COLOR_ARROW_BG = 0xFF201F1F.toInt()    // --surface-container
+        private const val COLOR_ARROW_BG = 0xFF262A31.toInt()    // a step above --surface-container
+        private const val COLOR_ARROW_RING = 0xFF414751.toInt()  // --outline-variant
         private const val COLOR_RISING = 0xFF4EDEA3.toInt()      // --secondary (ENCHENDO)
         private const val COLOR_FALLING = 0xFFFABD34.toInt()     // VAZANDO
     }
@@ -95,6 +96,11 @@ class WindTideRenderer(private val context: Context) {
         val cx = right - r
         val cy = 78f * s
         canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = COLOR_ARROW_BG })
+        canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = COLOR_ARROW_RING
+            style = Paint.Style.STROKE
+            strokeWidth = 1f * s
+        })
         drawNavArrow(canvas, cx, cy, wind.currentDirection, r * 0.6f, COLOR_TIDE)
 
         canvas.drawText("NÓS", left, 116f * s, labelPaint(9f * s))
