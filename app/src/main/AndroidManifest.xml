@@ -39,6 +39,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Wind + Tide widget: choose or add a place -->
+        <activity
+            android:name=".WindTideConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.WindWidget.Configure">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Wind Widget Provider (4x2 Chart) -->
         <receiver
             android:name=".WindWidget"
@@ -102,6 +112,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/wind_widget_modern_info" />
+        </receiver>
+
+        <!-- Wind + Tide Provider (4x2, Windguru + tabuasdemare) -->
+        <receiver
+            android:name=".WindWidgetTide"
+            android:exported="true"
+            android:label="@string/widget_name_tide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wind_widget_tide_info" />
         </receiver>
 
         <!-- Boot receiver to restart updates after reboot -->

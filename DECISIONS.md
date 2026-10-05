@@ -1,6 +1,22 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-05 — Wind + tide widget reads Windguru and tabuasdemare directly
+**Context:** The Echo Show dashboard (echo-show-vento) gets wind from Windguru and tide from
+tabuasdemare.com.br through a Python server. Windguru answers 401 unless the station page is the Referer,
+which a browser can't set but an app can.
+**Decision:** The app calls both sites itself, with no proxy and no keys. Wind is cached for 5 min per
+station. On failure the last real reading is shown as STALE, and a reading older than 60 min is STALE
+even when the request works. The tide table is fetched once per day and kept only for that day: a
+table for another day is never used, even when the site still serves it. The height uses the same
+cosine interpolation as server.py. Places (name, station ID, tide slug) live in plain prefs because
+they hold no secrets. Each widget keeps its own copy of its place, so deleting a place from the list
+doesn't break a widget. The last extreme is shown as a clock time ("às 04:25"), not "há 1h13",
+because the widget repaints only every 30 min.
+**Consequences:** If either site changes its format, the widget breaks until the parser is fixed (the
+Echo would break too). Tide works only for places on tabuasdemare.com.br, and its times are read in
+America/Maceio.
+
 ## 2026-10-03 — Every widget gets its corners from a 16dp layout outline
 **Context:** After the Modern fix, Clean, Bar and Compact still baked height-scaled corners into the
 bitmap (Compact's was 20% of its size), so they also looked rounder than other home-screen widgets.

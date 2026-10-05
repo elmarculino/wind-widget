@@ -87,6 +87,54 @@ class WidgetPreviewGenerator {
         assertCornersTransparent(WindCompactRenderer(context).render(data, 300, 420, clipCorners = true), "compact portrait")
     }
 
+    @Test
+    fun `render wind and tide`() {
+        File(outDir, "review").mkdirs()
+        val r = WindTideRenderer(context)
+        val wind = echoWind()
+        val renders = mapOf(
+            "widget_preview_wind_tide.png" to r.render(wind, echoTide(), 1160, 600, clipCorners = true),
+            // Falling tide, offline wind, strong WNW, long name, no temperature
+            "review/wind_tide_stress.png" to r.render(
+                wind.copy(
+                    locationName = "Praia do Patacho - Porto de Pedras, Alagoas (estação 2)",
+                    currentSpeed = 29.8f, currentGust = 47.6f, currentDirection = 300f,
+                    temperatureC = null, dataStatus = WindDataStatus.STALE
+                ),
+                echoTide().copy(heightNowM = 0.94f, rising = false,
+                    lastExtreme = TideExtreme(TideType.HIGH, 1.48f, at(10, 40)),
+                    upcoming = listOf(TideExtreme(TideType.LOW, 0.75f, at(17, 4)), TideExtreme(TideType.HIGH, 1.61f, at(23, 6)))),
+                1080, 540, clipCorners = true
+            ),
+            "review/wind_tide_no_tide.png" to r.render(wind, null, 1080, 540, clipCorners = true),
+            "review/wind_tide_demo.png" to r.render(wind.copy(dataStatus = WindDataStatus.DEMO), echoTide(), 1080, 540, clipCorners = true)
+        )
+        renders.forEach { (name, bitmap) ->
+            save(bitmap, name)
+            assertCornersTransparent(bitmap, name)
+        }
+    }
+
+    private fun at(hour: Int, minute: Int) =
+        java.util.Calendar.getInstance().apply { set(2026, 9, 4, hour, minute, 0) }.timeInMillis
+
+    /** Windguru 15572 on 2026-10-04 05:38, as served to the Echo dashboard. */
+    private fun echoWind() = WindData(
+        locationName = "Farol da Ponta Verde · Maceió",
+        times = emptyList(), speeds = emptyList(), directions = emptyList(), gusts = emptyList(),
+        currentSpeed = 17.7f, currentDirection = 109f, currentGust = 18.8f, temperatureC = 26.4f,
+        lastUpdatedMillis = at(5, 38)
+    )
+
+    /** tabuasdemare Ponta Verde, same morning: rising from the 04:25 low. */
+    private fun echoTide() = TideData(
+        locationName = "Praia de Ponta Verde",
+        heightNowM = 0.72f,
+        rising = true,
+        lastExtreme = TideExtreme(TideType.LOW, 0.58f, at(4, 25)),
+        upcoming = listOf(TideExtreme(TideType.HIGH, 1.48f, at(10, 40)), TideExtreme(TideType.LOW, 0.75f, at(17, 4)))
+    )
+
     private fun assertCornersTransparent(bitmap: Bitmap, name: String) {
         val w = bitmap.width - 1
         val h = bitmap.height - 1

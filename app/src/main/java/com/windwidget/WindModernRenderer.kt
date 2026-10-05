@@ -118,14 +118,6 @@ class WindModernRenderer(private val context: Context) {
         canvas.drawText(fitText(data.locationName, locationPaint, titleWidth), paddingH, titleBaseline, locationPaint)
     }
 
-    /** [text] as is when it fits in [maxWidth], otherwise cut and ended with "...". */
-    private fun fitText(text: String, paint: Paint, maxWidth: Float): String {
-        if (paint.measureText(text) <= maxWidth) return text
-        val ellipsis = "..."
-        val chars = paint.breakText(text, true, maxWidth - paint.measureText(ellipsis), null)
-        return text.take(chars).trimEnd() + ellipsis
-    }
-
     private fun drawMainContent(canvas: Canvas, data: WindData, width: Int, paddingH: Float, top: Float, scale: Float) {
         // Large wind speed
         val speedPaint = TextPaint().apply {
