@@ -2,18 +2,21 @@
 Updated: 2026-10-05
 
 ## State
-PRs #1–#3 (review fixes, design P1, Ecowitt auth + status) are merged into master; all widgets clip
-to a 16dp outline. Branch `feature/wind-tide-widget`: new "Vento + Maré" 4x2 widget, the right half
-of the Echo Show dashboard. Wind comes from a Windguru station and tide from tabuasdemare.com.br,
-both fetched directly with no proxy or keys. Places can be chosen per widget and new ones added,
-checked against both sites (Ponta Verde is the default). The widget is reconfigurable. 38 unit tests
-pass, including tide parity with echo-show-vento's server.py.
+PRs #1–#4 are merged into master: review fixes, design P1, Ecowitt auth + status, 16dp corners, and
+the "Vento + Maré" 4x2 widget (Windguru wind + tabuasdemare tide, selectable places, Ponta Verde by
+default). Wind + tide was checked on the S25 with live data and no crashes.
+Branch `fix/review-bugs-5-8` fixes review bugs 5–8:
+- Legacy plain-text credentials go to every Ecowitt widget and are then deleted (no one-shot flag).
+- The `SecurePrefs` keystore fallback writes to a separate `*_unencrypted` file.
+- The loading spinner uses `partiallyUpdateAppWidget`; the tap handler is set before the fetch, so it
+  survives errors (all 6 providers).
+- Ecowitt responses are closed via `use {}`.
+43 unit tests pass.
 
 ## Blockers
-- The wind+tide widget hasn't run on the phone yet (adb device not connected on 2026-10-05).
+- None.
 
 ## Next
-1. Install on the S25: add the widget, add a second place, tap to refresh, airplane mode (amber time,
-   tide from the day's cache).
-2. Review + merge the wind-tide PR.
-3. Fix bugs 5–8 (bug 6, plain-text keys, first); design P2 shared colour scale; P3 (UI language).
+1. On the S25: check the spinner and tap-to-refresh on an Ecowitt widget, then review + merge the PR.
+2. Design P2: one shared wind colour scale for speed and gust.
+3. P3: one UI language via strings.xml; Chart cleanup.

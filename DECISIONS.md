@@ -1,6 +1,19 @@
 # Decisions
 Append-only, newest first.
 
+## 2026-10-05 — Legacy plain-text prefs are migrated on every start, then deleted
+**Context:** Old versions kept Ecowitt keys and cache in plain text in `wind_widget_prefs`, the same
+file EncryptedSharedPreferences uses. The keystore fallback wrote plain `widget_<id>_*` keys there too.
+The one-shot migration (flag `migration_completed_v1`) only moved them to the first widget that
+started, and it never deleted the plain text.
+**Decision:** Each fetcher start reads the plain view of the file and keeps only our own key names.
+Unscoped credentials go to every Ecowitt widget that has none. Plain `widget_<id>_*` keys keep their
+name. Once the encrypted copy is committed, the plain keys are removed. There is no done flag: with
+nothing left, it is a no-op. If the widget list can't be read, the legacy keys stay for the next run.
+The keystore fallback now uses its own file, `<name>_unencrypted`.
+**Consequences:** A device whose keystore fails keeps its keys in plain text, but in a separate file,
+never mixed into the encrypted one. Settings saved earlier under that fallback are moved over too.
+
 ## 2026-10-05 — Wind + tide widget reads Windguru and tabuasdemare directly
 **Context:** The Echo Show dashboard (echo-show-vento) gets wind from Windguru and tide from
 tabuasdemare.com.br through a Python server. Windguru answers 401 unless the station page is the Referer,
