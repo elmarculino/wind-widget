@@ -100,9 +100,15 @@ object WindUpdateScheduler {
         enqueueUpdate(context, forceRefresh = true)
     }
 
-    internal fun allWidgetIds(context: Context): IntArray {
+    internal fun allWidgetIds(context: Context): IntArray = widgetIds(context, PROVIDERS)
+
+    /** Widgets that read Ecowitt credentials (all but wind + tide). */
+    internal fun ecowittWidgetIds(context: Context): IntArray =
+        widgetIds(context, PROVIDERS - WindWidgetTide::class.java)
+
+    private fun widgetIds(context: Context, providers: List<Class<*>>): IntArray {
         val appWidgetManager = AppWidgetManager.getInstance(context)
-        return PROVIDERS.flatMap { provider ->
+        return providers.flatMap { provider ->
             appWidgetManager.getAppWidgetIds(ComponentName(context, provider)).toList()
         }.toIntArray()
     }
