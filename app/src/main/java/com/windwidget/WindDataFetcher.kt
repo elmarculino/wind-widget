@@ -15,7 +15,6 @@ import okhttp3.Request
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 /**
  * Fetches wind data from Ecowitt API:
@@ -25,7 +24,7 @@ import java.util.concurrent.TimeUnit
 class EcowittDataFetcher(
     private val context: Context,
     private val appWidgetId: Int? = null,
-    private val client: OkHttpClient = defaultClient
+    private val client: OkHttpClient = HttpClients.shared
 ) {
 
     companion object {
@@ -46,15 +45,6 @@ class EcowittDataFetcher(
 
         // Default location name
         private const val DEFAULT_LOCATION = "São Miguel dos Milagres - Alagoas, MiCasa"
-
-        // Shared across fetcher instances so widgets reuse one connection pool
-        private val defaultClient: OkHttpClient by lazy {
-            OkHttpClient.Builder()
-                .addInterceptor(RetryInterceptor())
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build()
-        }
     }
 
     private val prefs: SharedPreferences by lazy {

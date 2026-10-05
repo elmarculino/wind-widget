@@ -33,7 +33,9 @@ app/src/main/java/com/windwidget/
 ├── WindWidgetHorizontal.kt        # Bar widget (4x1)        → WindBarRenderer.kt
 ├── WindWidgetClean.kt             # Material style (4x2)    → WindCleanRenderer.kt
 ├── WindWidgetCompact.kt           # Compact (2x2)           → WindCompactRenderer.kt
-└── WindWidgetModern.kt            # Dark glass (4x2)        → WindModernRenderer.kt
+├── WindWidgetModern.kt            # Dark glass (4x2)        → WindModernRenderer.kt
+└── WindWidgetTide.kt              # Wind + tide (4x2)       → WindTideRenderer.kt
+    (WindguruFetcher, TideFetcher, WindTideLocation.kt, WindTideConfigureActivity)
 ```
 
 ### Ecowitt API
@@ -44,6 +46,9 @@ app/src/main/java/com/windwidget/
 Two SharedPreferences files (encrypted via `SecurePrefs`):
 1. `wind_widget_prefs` — per-widget credentials (`widget_<id>_*`) and cached data
 2. `wind_widget_locations` — saved locations list (JSON array)
+
+Plain (not encrypted) `wind_tide_prefs`: wind+tide places, each widget's place, Windguru and tide caches.
+No secrets: Windguru needs only a Referer, and tabuasdemare is a public page.
 
 ### Update mechanism
 - Every update goes through `WindUpdateScheduler.enqueueUpdate(...)` → `WindUpdateWorker`

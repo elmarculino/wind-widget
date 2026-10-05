@@ -26,7 +26,8 @@ object WindUpdateScheduler {
         WindWidgetHorizontal::class.java,
         WindWidgetClean::class.java,
         WindWidgetCompact::class.java,
-        WindWidgetModern::class.java
+        WindWidgetModern::class.java,
+        WindWidgetTide::class.java
     )
 
     /**
@@ -118,6 +119,7 @@ object WindUpdateScheduler {
             WindWidgetClean::class.java.name -> WindWidgetClean.updateWidget(context, appWidgetManager, appWidgetId, forceRefresh)
             WindWidgetCompact::class.java.name -> WindWidgetCompact.updateWidget(context, appWidgetManager, appWidgetId, forceRefresh)
             WindWidgetModern::class.java.name -> WindWidgetModern.updateWidget(context, appWidgetManager, appWidgetId, forceRefresh)
+            WindWidgetTide::class.java.name -> WindWidgetTide.updateWidget(context, appWidgetManager, appWidgetId, forceRefresh)
             // Widget was removed before the work ran
             else -> Unit
         }

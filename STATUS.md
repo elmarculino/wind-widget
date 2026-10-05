@@ -1,20 +1,19 @@
 # Status
-Updated: 2026-10-03
+Updated: 2026-10-05
 
 ## State
-Code review done (findings in PROJECT.md › Definition of done). Bugs 1–4 are fixed on branch
-`fix/review-data-integrity` (PR open). The branch also carries Marco's earlier uncommitted
-work (saved locations, UI). Modern chart now auto-fits like Clean; Modern/Clean have rendered picker
-previews. Design review P1 on `fix/widget-design-p1` (stacked on the review PR): Compact layout,
-Modern overlap/legend, amber offline badge, gust format, transparent corners (ARGB_8888),
-16-point compass, chart clipToOutline. `fix/ecowitt-auth-params` (stacked on P1): keys back as query
-params (headers broke every fetch), Modern status badge on the title row, status is just the time (amber when offline). 21 unit tests pass.
-Installed on Marco's S25 via USB: live data confirmed on the Modern widget.
+PRs #1–#3 (review fixes, design P1, Ecowitt auth + status) are merged into master; all widgets clip
+to a 16dp outline. Branch `feature/wind-tide-widget`: new "Vento + Maré" 4x2 widget, the right half
+of the Echo Show dashboard. Wind comes from a Windguru station and tide from tabuasdemare.com.br,
+both fetched directly with no proxy or keys. Places can be chosen per widget and new ones added,
+checked against both sites (Ponta Verde is the default). The widget is reconfigurable. 38 unit tests
+pass, including tide parity with echo-show-vento's server.py.
 
 ## Blockers
-- Not tested on a device yet.
+- The wind+tide widget hasn't run on the phone yet (adb device not connected on 2026-10-05).
 
 ## Next
-1. Install the APK on the phone; test tap, resize and airplane mode (should show the last time in amber, not demo).
-2. Review + merge the PR (3 commits: earlier UI work, review fixes, Modern line + previews).
+1. Install on the S25: add the widget, add a second place, tap to refresh, airplane mode (amber time,
+   tide from the day's cache).
+2. Review + merge the wind-tide PR.
 3. Fix bugs 5–8 (bug 6, plain-text keys, first); design P2 shared colour scale; P3 (UI language).
