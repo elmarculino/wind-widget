@@ -6,6 +6,8 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 
 object SecurePrefs {
+    internal fun fallbackName(name: String) = "${name}_unencrypted"
+
     fun get(context: Context, name: String): SharedPreferences {
         return try {
             val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
@@ -18,8 +20,9 @@ object SecurePrefs {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            // Fallback if keystore isn't available on the device.
-            context.getSharedPreferences(name, Context.MODE_PRIVATE)
+            // Keystore isn't available on the device. Use a separate file: writing plain text into
+            // the encrypted one would mix the two and leave readable keys next to encrypted ones.
+            context.getSharedPreferences(fallbackName(name), Context.MODE_PRIVATE)
         }
     }
 }

@@ -245,6 +245,107 @@ class EcowittDataFetcherTest {
         assertFalse(prefs.contains("cache_time"))
     }
 
+    @Test
+    fun `migration gives legacy credentials to every Ecowitt widget and deletes the plain text`() {
+        legacyPrefs.edit()
+            .putString("ecowitt_app_key", "appKey")
+            .putString("ecowitt_api_key", "apiKey")
+            .putString("ecowitt_mac", "mac123")
+            .putString("location_name", "Old Place")
+            .putString("cached_wind_data", Gson().toJson(realReading()))
+            .putLong("cache_time", 1234L)
+            .putBoolean("migration_completed_v1", true)
+            .apply()
+        // Widget 8 already has its own settings; they must survive
+        prefs.edit().putString("widget_8_ecowitt_app_key", "ownKey").apply()
+
+        EcowittDataFetcher(context, appWidgetId = 7, ecowittWidgetIds = { intArrayOf(7, 8, 9) })
+
+        for (id in listOf(7, 9)) {
+            assertEquals("appKey", prefs.getString("widget_${id}_ecowitt_app_key", null))
+            assertEquals("apiKey", prefs.getString("widget_${id}_ecowitt_api_key", null))
+            assertEquals("mac123", prefs.getString("widget_${id}_ecowitt_mac", null))
+            assertEquals("Old Place", prefs.getString("widget_${id}_location_name", null))
+            assertEquals(1234L, prefs.getLong("widget_${id}_cache_time", 0))
+        }
+        assertEquals("ownKey", prefs.getString("widget_8_ecowitt_app_key", null))
+        assertNull(prefs.getString("widget_8_ecowitt_api_key", null))
+        assertTrue(legacyPrefs.all.isEmpty())
+    }
+
+    @Test
+    fun `migration moves plain-text widget keys left by the keystore fallback`() {
+        legacyPrefs.edit()
+            .putString("widget_5_ecowitt_app_key", "appKey")
+            .putString("widget_5_ecowitt_api_key", "apiKey")
+            .putString("widget_5_ecowitt_mac", "mac123")
+            .putLong("widget_5_cache_time", 99L)
+            .apply()
+
+        val fetcher = EcowittDataFetcher(context, appWidgetId = 5, ecowittWidgetIds = { error("not needed") })
+
+        assertEquals("mac123", fetcher.loadCredentials()!!.macAddress)
+        assertEquals(99L, prefs.getLong("widget_5_cache_time", 0))
+        assertTrue(legacyPrefs.all.isEmpty())
+    }
+
+    @Test
+    fun `migration keeps legacy credentials when the widget list is unavailable`() {
+        legacyPrefs.edit()
+            .putString("ecowitt_app_key", "appKey")
+            .putString("ecowitt_api_key", "apiKey")
+            .putString("ecowitt_mac", "mac123")
+            .apply()
+
+        EcowittDataFetcher(context, appWidgetId = 7, ecowittWidgetIds = { throw IllegalStateException() })
+
+        assertEquals("appKey", legacyPrefs.getString("ecowitt_app_key", null))
+        assertNull(prefs.getString("widget_7_ecowitt_app_key", null))
+    }
+
+    @Test
+    fun `migration leaves unrelated plain keys alone`() {
+        legacyPrefs.edit().putString("__androidx_security_crypto_encrypted_prefs_key_keyset__", "keyset").apply()
+
+        EcowittDataFetcher(context, appWidgetId = 7, ecowittWidgetIds = { error("not needed") })
+
+        assertEquals("keyset", legacyPrefs.getString("__androidx_security_crypto_encrypted_prefs_key_keyset__", null))
+        assertTrue(prefs.all.isEmpty())
+    }
+
+    @Test
+    fun `error responses are closed`() = runBlocking {
+        val closed = mutableListOf<Boolean>()
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val body = object : okhttp3.ResponseBody() {
+                    private val source = okio.Buffer().writeUtf8("oops")
+                    override fun contentType(): okhttp3.MediaType? = null
+                    override fun contentLength() = source.size
+                    override fun source(): okio.BufferedSource = source
+                    override fun close() {
+                        synchronized(closed) { closed.add(true) }
+                        super.close()
+                    }
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(500)
+                    .message("stub")
+                    .body(body)
+                    .build()
+            }
+            .build()
+        val fetcher = EcowittDataFetcher(context, client = client)
+        fetcher.saveCredentials("appKey", "apiKey", "mac123", "My Place")
+
+        fetcher.fetch()
+
+        // History and real-time both answered 500 without reading the body
+        assertEquals(2, closed.size)
+    }
+
     private fun realReading() = WindData(
         locationName = "Real",
         times = listOf("2024-01-01T00:00", "2024-01-01T00:05"),

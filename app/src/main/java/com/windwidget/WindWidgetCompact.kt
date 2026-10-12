@@ -29,8 +29,22 @@ class WindWidgetCompact : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_wind_compact)
 
-            views.setViewVisibility(R.id.loadingIndicator, View.VISIBLE)
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+            // Only turn the spinner on: a full update here would blank the widget and drop its tap handler
+            val loading = RemoteViews(context.packageName, R.layout.widget_wind_compact).apply {
+                setViewVisibility(R.id.loadingIndicator, View.VISIBLE)
+            }
+            appWidgetManager.partiallyUpdateAppWidget(appWidgetId, loading)
+
+            // Tap to refresh, set up front so the error path keeps it too
+            val refreshIntent = Intent(context, WindWidgetCompact::class.java).apply {
+                action = ACTION_REFRESH
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, appWidgetId + 3000, refreshIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
             try {
                 val fetcher = EcowittDataFetcher(context, appWidgetId)
@@ -46,17 +60,6 @@ class WindWidgetCompact : AppWidgetProvider() {
 
                 views.setImageViewBitmap(R.id.windChart, bitmap)
                 views.setViewVisibility(R.id.loadingIndicator, View.GONE)
-
-                val refreshIntent = Intent(context, WindWidgetCompact::class.java).apply {
-                    action = ACTION_REFRESH
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                }
-                val pendingIntent = PendingIntent.getBroadcast(
-                    context, appWidgetId + 3000, refreshIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 views.setViewVisibility(R.id.loadingIndicator, View.GONE)

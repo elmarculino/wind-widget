@@ -17,10 +17,10 @@ Review of 2026-10-03, bugs (numbers match the review):
 - [x] 2. Updates run inside a WorkManager worker that waits for fetch + render
 - [x] 3. Tap-to-refresh forces a network fetch
 - [x] 4. Configuring/changing credentials clears the old cache and forces a fetch
-- [ ] 5. Legacy-prefs migration covers every existing widget, not only the first one
-- [ ] 6. Plain-text legacy API keys removed after migration; `SecurePrefs` fallback never writes plain text to the encrypted file
-- [ ] 7. Loading state uses `partiallyUpdateAppWidget`; error path keeps the tap handler (all 5 providers)
-- [ ] 8. HTTP responses always closed (`response.use {}`)
+- [x] 5. Legacy-prefs migration covers every existing widget, not only the first one
+- [x] 6. Plain-text legacy API keys removed after migration; `SecurePrefs` fallback never writes plain text to the encrypted file
+- [x] 7. Loading state uses `partiallyUpdateAppWidget`; error path keeps the tap handler (all 5 providers)
+- [x] 8. HTTP responses always closed (`response.use {}`)
 - [x] 9. Modern chart clamps values above 20 kt; guard `size < 2` before dividing by `size - 1`
   (clamp gone with auto-fit; Chart/Bar use `coerceAtLeast(1)`, Clean/Modern guard `size < 2`)
 - [x] 10. Rounded corners rendered with ARGB_8888 (transparent corners)

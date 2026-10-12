@@ -24,13 +24,16 @@ import java.util.*
 class EcowittDataFetcher(
     private val context: Context,
     private val appWidgetId: Int? = null,
-    private val client: OkHttpClient = HttpClients.shared
+    private val client: OkHttpClient = HttpClients.shared,
+    /** Ids of the Ecowitt widgets on the home screen, for the legacy-credentials migration. */
+    private val ecowittWidgetIds: () -> IntArray = { WindUpdateScheduler.ecowittWidgetIds(context) }
 ) {
 
     companion object {
         private const val PREFS_NAME = "wind_widget_prefs"
         private const val KEY_CACHED_DATA = "cached_wind_data"
         private const val KEY_CACHE_TIME = "cache_time"
+        // Flag of the old one-shot migration; only ever deleted now
         private const val KEY_MIGRATION_COMPLETED_V1 = "migration_completed_v1"
         private const val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
 
@@ -45,6 +48,12 @@ class EcowittDataFetcher(
 
         // Default location name
         private const val DEFAULT_LOCATION = "São Miguel dos Milagres - Alagoas, MiCasa"
+
+        private val WIDGET_KEY = Regex("""widget_\d+_(.+)""")
+        private val LEGACY_KEYS = setOf(
+            KEY_APPLICATION_KEY, KEY_API_KEY, KEY_MAC_ADDRESS, KEY_LOCATION_NAME,
+            KEY_CACHED_DATA, KEY_CACHE_TIME, KEY_MIGRATION_COMPLETED_V1
+        )
     }
 
     private val prefs: SharedPreferences by lazy {
@@ -140,11 +149,12 @@ class EcowittDataFetcher(
             .build()
 
         return try {
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return null
-
-            val json = response.body?.string() ?: return null
-            parseHistoryResponse(json)
+            // use {} closes the response on every path, including the early returns
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val json = response.body?.string() ?: return null
+                parseHistoryResponse(json)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -161,11 +171,12 @@ class EcowittDataFetcher(
             .build()
 
         return try {
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return null
-
-            val json = response.body?.string() ?: return null
-            parseRealtimeResponse(json)
+            // use {} closes the response on every path, including the early returns
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val json = response.body?.string() ?: return null
+                parseRealtimeResponse(json)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -409,46 +420,60 @@ class EcowittDataFetcher(
         val locationName: String
     )
 
+    /**
+     * Older versions kept credentials and cache in plain text in the same file the encrypted prefs
+     * use: unscoped keys from before per-widget settings, and `widget_<id>_*` keys written when the
+     * keystore fallback was in use. Copy them into the encrypted prefs (the unscoped credentials go
+     * to every Ecowitt widget that has none), then delete the plain-text copies. Runs on every
+     * start, so it is a no-op once nothing is left and needs no "done" flag.
+     */
     private fun migrateLegacyPrefsIfNeeded() {
-        if (prefs.getBoolean(KEY_MIGRATION_COMPLETED_V1, false)) {
-            return
-        }
-
         val legacyPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val legacy = legacyPrefs.all.filterKeys { isLegacyKey(it) }
+        if (legacy.isEmpty()) return
 
-        val hasWidgetCreds = !prefs.getString(widgetKey(KEY_APPLICATION_KEY), null).isNullOrEmpty() ||
-                !prefs.getString(widgetKey(KEY_API_KEY), null).isNullOrEmpty() ||
-                !prefs.getString(widgetKey(KEY_MAC_ADDRESS), null).isNullOrEmpty()
-
-        if (appWidgetId != null && !hasWidgetCreds) {
-            val legacyAppKey = legacyPrefs.getString(KEY_APPLICATION_KEY, null)
-            val legacyApiKey = legacyPrefs.getString(KEY_API_KEY, null)
-            val legacyMac = legacyPrefs.getString(KEY_MAC_ADDRESS, null)
-            val legacyLocation = legacyPrefs.getString(KEY_LOCATION_NAME, null)
-
-            if (!legacyAppKey.isNullOrEmpty() && !legacyApiKey.isNullOrEmpty() && !legacyMac.isNullOrEmpty()) {
-                prefs.edit()
-                    .putString(widgetKey(KEY_APPLICATION_KEY), legacyAppKey)
-                    .putString(widgetKey(KEY_API_KEY), legacyApiKey)
-                    .putString(widgetKey(KEY_MAC_ADDRESS), legacyMac)
-                    .putString(widgetKey(KEY_LOCATION_NAME), legacyLocation)
-                    .apply()
+        val edit = prefs.edit()
+        // Plain-text widget_<id>_* keys (and anything else we own) keep their name
+        legacy.forEach { (key, value) ->
+            if (key == KEY_MIGRATION_COMPLETED_V1 || prefs.contains(key)) return@forEach
+            when (value) {
+                is String -> edit.putString(key, value)
+                is Long -> edit.putLong(key, value)
             }
         }
 
-        val widgetCacheKey = widgetKey(KEY_CACHED_DATA)
-        val widgetCacheTimeKey = widgetKey(KEY_CACHE_TIME)
-        if (prefs.getString(widgetCacheKey, null) == null) {
-            val legacyCache = legacyPrefs.getString(KEY_CACHED_DATA, null)
-            if (legacyCache != null) {
-                prefs.edit()
-                    .putString(widgetCacheKey, legacyCache)
-                    .putLong(widgetCacheTimeKey, legacyPrefs.getLong(KEY_CACHE_TIME, 0))
-                    .apply()
+        val appKey = legacy[KEY_APPLICATION_KEY] as? String
+        val apiKey = legacy[KEY_API_KEY] as? String
+        val mac = legacy[KEY_MAC_ADDRESS] as? String
+        if (!appKey.isNullOrEmpty() && !apiKey.isNullOrEmpty() && !mac.isNullOrEmpty()) {
+            val widgetIds = try {
+                ecowittWidgetIds()
+            } catch (e: Exception) {
+                // Can't tell which widgets need them: keep the legacy keys and try again next time
+                return
+            }
+            widgetIds.forEach { id ->
+                val key = { base: String -> "widget_${id}_$base" }
+                if (!prefs.getString(key(KEY_APPLICATION_KEY), null).isNullOrEmpty()) return@forEach
+                edit.putString(key(KEY_APPLICATION_KEY), appKey)
+                    .putString(key(KEY_API_KEY), apiKey)
+                    .putString(key(KEY_MAC_ADDRESS), mac)
+                (legacy[KEY_LOCATION_NAME] as? String)?.let { edit.putString(key(KEY_LOCATION_NAME), it) }
+                if (!prefs.contains(key(KEY_CACHED_DATA))) {
+                    (legacy[KEY_CACHED_DATA] as? String)?.let { edit.putString(key(KEY_CACHED_DATA), it) }
+                    (legacy[KEY_CACHE_TIME] as? Long)?.let { edit.putLong(key(KEY_CACHE_TIME), it) }
+                }
             }
         }
 
-        prefs.edit().putBoolean(KEY_MIGRATION_COMPLETED_V1, true).apply()
+        // Only drop the plain text once the encrypted copy is on disk
+        if (!edit.commit()) return
+        legacyPrefs.edit().apply { legacy.keys.forEach { remove(it) } }.commit()
+    }
+
+    private fun isLegacyKey(key: String): Boolean {
+        val base = WIDGET_KEY.matchEntire(key)?.groupValues?.get(1) ?: key
+        return base in LEGACY_KEYS
     }
 
     // Internal data classes for parsing
